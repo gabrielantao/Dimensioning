@@ -1,0 +1,26 @@
+{
+    "ABOc": {
+        "checkBox": "false", 
+        "fontComboBox": "DejaVu Sans Mono", 
+        "pushButton_2": [
+            "0", 
+            "0", 
+            "0"
+        ]
+    }, 
+    "Font": {
+        "doubleSpinBox": "24.199999999999999", 
+        "spinBox": "10"
+    }, 
+    "General": {
+        "comboBox": "opt1", 
+        "horizontalSlider": "10", 
+        "lineEdit": "abc", 
+        "pushButton": [
+            "0", 
+            "0", 
+            "0"
+        ], 
+        "radioButton": "false"
+    }
+}
