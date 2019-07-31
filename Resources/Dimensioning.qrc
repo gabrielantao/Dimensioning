@@ -58,11 +58,33 @@
 		<file>ui/preferences_line.ui</file>
 		<file>ui/annotation_task.ui</file>
 		<file>ui/preferences_general.ui</file>
-		<file>ui/dialog_teste.ui</file>
 		<file>fonts/ISO_3098.ttf</file>
 		<file>fonts/ISO_3098Italic.ttf</file>
 		<file>icons/plus.png</file>
 		<file>icons/hole.png</file>
 		<file>icons/diameter.png</file>
+		<file>symbols/slope.svg</file>
+		<file>symbols/hole_depth.svg</file>
+		<file>symbols/plus_minus.svg</file>
+		<file>symbols/trademark.svg</file>
+		<file>symbols/five_eighths.svg</file>
+		<file>symbols/copyleft.svg</file>
+		<file>symbols/conical_taper.svg</file>
+		<file>symbols/one_eighth.svg</file>
+		<file>symbols/statistical_tolerance.svg</file>
+		<file>symbols/one_half.svg</file>
+		<file>symbols/continous_feature.svg</file>
+		<file>symbols/three_quarters.svg</file>
+		<file>symbols/seven_eighths.svg</file>
+		<file>symbols/one_quarter.svg</file>
+		<file>symbols/countersink.svg</file>
+		<file>symbols/per_thousand.svg</file>
+		<file>symbols/center_line.svg</file>
+		<file>symbols/counterbore.svg</file>
+		<file>symbols/square.svg</file>
+		<file>symbols/copyright.svg</file>
+		<file>symbols/registered.svg</file>
+		<file>symbols/diameter.svg</file>
+		<file>symbols/three_eighths.svg</file>
 	</qresource>
 </RCC>

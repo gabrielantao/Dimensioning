@@ -41,7 +41,7 @@ if os.path.exists(py_filename):
 
 qrc = "<RCC>\n\t<qresource>"
 #TODO: substituir a lista para mandar procurar por toda a pasta resources?
-for fn in glob.glob("icons/*.svg") + glob.glob("ui/*.ui") + glob.glob("fonts/*.ttf") + glob.glob("icons/*.png"): 
+for fn in glob.glob("icons/*.svg") + glob.glob("ui/*.ui") + glob.glob("fonts/*.ttf") + glob.glob("icons/*.png") + glob.glob("symbols/*.svg"): 
     qrc = qrc + "\n\t\t<file>%s</file>" % fn
 qrc = qrc + "\n\t</qresource>\n</RCC>"
 

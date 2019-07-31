@@ -31,23 +31,24 @@ from PySide import QtGui, QtCore
 import FreeCAD, FreeCADGui
 from Utils import getGraphicsView, mmtopt, setButtonColor
 
-from GraphicItem import Arrow
+from GraphicItem import Arrow, PointCatcher
 ### TODO LIST
 # (V) criar a task dialog
 # (V) conectar os eventos da dialog com o item
 # (V) criar leader lines e shoulder lines
 # 4) aceitar opcoes como alinhamento horizontal
 # 5) deletar linhas de chamada com botao del, ao clicar ele fica selecionado
-# $$ 6) colocar quadrado na ponta da seta
-# $$ 6.5) colocar funcionalidade para mover a ponta da seta pelo clique do mouse
-# $ 7) colocar as setas
+# (V) 6) colocar quadrado na ponta da seta
+# (V) 6.5) colocar funcionalidade para mover a ponta da seta pelo clique do mouse
+# $$ 7) colocar as setas
 # (V) colocar a shoulder line na end bent
-# $ 9) colocar os icones no dialog widget no qt designer
-# 10) colocar a opcao de salvar como padrao
+# $$ 9) colocar os icones no dialog widget no qt designer
+# $ 10) colocar a opcao de salvar como padrao
 # (V) apagar linha quando clicar no close
-# $$$ 12) colocar mais setas em posicoes diferentes (girando 10graus entre enlas)
-# $$$ 13) iluminar todas as linhas de chamada e shoulder quando passar mouse sobre o texto
+# (V) 12) colocar mais setas em posicoes diferentes 
+# (V) 13) iluminar todas as linhas de chamada e shoulder quando passar mouse sobre o texto
 # 14) criar feature e view 
+# (V) 15) colocar os demais icones no insert icon
 
 class AnnotationTask:
     """Create and handle annotation task dialog"""
@@ -63,7 +64,6 @@ class AnnotationTask:
         self.createColorDialog()
         self.createSymbolButton()
 #        self.form.default_button.clicked.connect(a) #TODO: implementar salvar como padrao
-        
 #        self.setDefaultConfig()
         # Handle scene objects
         self.graphics_view = graphics_view
@@ -96,6 +96,8 @@ class AnnotationTask:
             self.scene.removeItem(self.annotation_item)
             for arrow in self.annotation_item.arrows:
                 self.scene.removeItem(arrow)
+            for catcher in self.annotation_item.point_catchers:
+                self.scene.removeItem(catcher)
    
     ## SLOTS ##
     def mousePress(self, event):
@@ -115,10 +117,16 @@ class AnnotationTask:
     def keyPress(self, event):
         """Handle the key press event inside scene"""
         if event.key() == QtCore.Qt.Key_Enter or event.key() == QtCore.Qt.Key_Return: 
+            if self.form.text_widget.toPlainText().strip() == "":
+                QtGui.QMessageBox.warning(self.form, "Dimensioning Workbench",
+                                          "Text should not be empty.")
+                return
             if self.mode == self.EDIT_MODE:
                 self.mode = self.INSERT_MODE
                 FreeCAD.Console.PrintMessage("Text added.\n")
                 self.annotation_item.setEditMode(False) 
+                for catcher in self.annotation_item.point_catchers:
+                    self.scene.removeItem(catcher)
                 self.annotation_item.update()
                 self.disconnectSlots()
                 self.annotation_item = None
@@ -150,6 +158,7 @@ class AnnotationTask:
     def createArrow(self):
         self.annotation_item.addArrow()
         self.scene.addItem(self.annotation_item.arrows[-1])
+        self.scene.addItem(self.annotation_item.point_catchers[-1])
         
     ## METHODS ##
     def connectSlots(self):
@@ -240,37 +249,49 @@ class AnnotationTask:
     # TODO: In future, change this for a button to a character map.
     # https://doc.qt.io/qt-5/qtwidgets-widgets-charactermap-example.html    
     def createSymbolButton(self):
+        """Create a symbol toolbutton menu"""
         import Dimensioning_rc
-        # TODO: reescrever isso aqui para gerar uma factory (decorated?)
-        #functions
-        def insertHole(val=True):
-            self.form.text_widget.insertPlainText(u"\u21a7")
-        def insertDiameter(val=True):
-            self.form.text_widget.insertPlainText(u"\u2300")
-        #TODO: adicionar mais simbolos
-        #TODO: acertar os simbolos. talvez colocar svg
-        #icons
-        icon_1 = QtGui.QIcon(":/icons/hole.png")
-        icon_2 = QtGui.QIcon(":/icons/diameter.png")
-        #actions
-        action_1 = QtGui.QAction("hole", self.form.insert_symbol)
-        action_1.setIcon(icon_1)
-        action_2 = QtGui.QAction("diameter", self.form.insert_symbol)
-        action_2.setIcon(icon_2)
-        #connections
-        action_1.triggered.connect(insertHole)
-        action_2.triggered.connect(insertDiameter)
-        #create menu
+        def insert_symbol(unicode_):
+            def func():
+                return self.form.text_widget.insertPlainText(unicode_)
+            return func
+        symbol_list = [[":/symbols/registered.svg", "Registered", u"\u00AE"], 
+                       [":/symbols/plus_minus.svg", "Plus-Minus", u"\u00B1"],
+                       [":/symbols/one_quarter.svg", "One Quarter", u"\u00BC"], 
+                       [":/symbols/one_half.svg", "One Half", u"\u00BD"],
+                       [":/symbols/three_quarters.svg", "Three Quarters", u"\u00BE"], 
+                       [":/symbols/one_eighth.svg", "One Eighth", u"\u215B"], 
+                       [":/symbols/three_eighths.svg", "Three Eighths", u"\u215C"], 
+                       [":/symbols/five_eighths.svg", "Five Eighths", u"\u215D"], 
+                       [":/symbols/seven_eighths.svg", "Seven Eighths", u"\u215E"], 
+                       [":/symbols/per_thousand.svg", "Per Thousand", u"\u2030"],
+                       [":/symbols/trademark.svg", "Trademark", u"\u2122"], 
+                       [":/symbols/center_line.svg", "Center Line", u"\u2104"],
+                       [":/symbols/hole_depth.svg", "Hole depth", u"\u21A7"], 
+                       [":/symbols/counterbore.svg", "Counterbore", u"\u2334"],
+                       [":/symbols/countersink.svg", "Countersink", u"\u2335"], 
+                       [":/symbols/diameter.svg", "Diameter", u"\u2300"],
+                       [":/symbols/square.svg", "Square", u"\u25A1"], 
+                       [":/symbols/conical_taper.svg", "Conical Taper", u"\u2332"],
+                       [":/symbols/slope.svg", "Slope", u"\u2333"], 
+                       [":/symbols/continous_feature.svg", "Continous Feature", u"\uE000"], 
+                       [":/symbols/statistical_tolerance.svg", "Statistical Tolerance", u"\uE001"], 
+                       [":/symbols/copyleft.svg", "Copyleft", u"\u2183"],
+                       [":/symbols/copyright.svg", "Copyright", u"\u00A9"]]
         menu = QtGui.QMenu()
-        menu.addAction(action_1)
-        menu.addAction(action_2)
+        for symbol in symbol_list:
+            icon = QtGui.QIcon(symbol[0])
+            action = QtGui.QAction(symbol[1], self.form.insert_symbol)
+            action.setIcon(icon)
+            action.triggered.connect(insert_symbol(symbol[2]))
+            menu.addAction(action)
         self.form.insert_symbol.setMenu(menu)
-        self.form.insert_symbol.setDefaultAction(action_2)
-        #https://www.walletfox.com/course/customqtoolbutton.php
+        self.form.insert_symbol.setDefaultAction(action)
         self.form.insert_symbol.triggered.connect(self.form.insert_symbol.setDefaultAction)
-        
+
           
-        
+# TODO: implement horizontal alignment. Maybe using QTextItem instead of 
+#       SimpleTextItem and HTML.
 class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
 #    ALIGNMENT = {"Left":    QtCore.Qt.AlignLeft,
 #                 "Right":   QtCore.Qt.AlignRight,
@@ -281,6 +302,8 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         self.config = {}
         self.editModeOn = True
         self.arrows = []
+        self.point_catchers = []
+        self.setLinePen(QtCore.Qt.black)
         self.setAcceptHoverEvents(True)
         self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
         self.setCursor(QtCore.Qt.OpenHandCursor)
@@ -301,8 +324,15 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         if not self.editModeOn:
             return
         arrow = Arrow()
-        self.setPivot(arrow)
+        self.setPivot(arrow) # set tail
+        # set head
+        if len(self.arrows) > 0:
+            last_arrow = self.arrows[-1]
+            arrow.setHeadPos(last_arrow.getHeadPos()+QtCore.QPointF(0, 20))
+        else:
+            arrow.setHeadPos(arrow.getTailPos()+QtCore.QPointF(-40, -40))
         self.arrows.append(arrow)
+        self.point_catchers.append(PointCatcher(arrow))
    
     def getPivot(self):
         """Get pivot point in Annotation coordinate system."""
@@ -344,14 +374,13 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
                 pivot = QtCore.QPointF(rect.right()-12, rect.bottom()-6)
         return pivot
     
-    def setPivot(self, arrow): #head=[400,400]):
+    def setPivot(self, arrow):
         """Set pivot point to arrow tail and to annotation
         in scene coordinate system."""
         pivot = self.getPivot()
         self.setTransformOriginPoint(pivot)
         tail = self.mapToScene(pivot)
-        head = QtCore.QPointF(400, 400) #TODO: gerar o ponto head aqui
-        arrow.setLine(QtCore.QLineF(tail, head))
+        arrow.setTailPos(tail)
         self.update()
         arrow.update()
         
@@ -360,6 +389,8 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         font = self.font()
         font.setPointSizeF(mmtopt(size))
         self.setFont(font)
+        for arrow in self.arrows:
+            self.setPivot(arrow)
         
     def setFontColor(self, color):
         """Set font color"""
@@ -368,6 +399,11 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         brush.setColor(color)
         self.setBrush(brush)
     
+    def setLinePen(self, color, width=0.5):
+        self.pen = QtGui.QPen(color)
+        self.pen.setCapStyle(QtCore.Qt.RoundCap)
+        self.pen.setWidthF(mmtopt(0.5))
+        
     def setEditMode(self, value):
         """Edit mode, true when editing (or creating) the annotation"""
         self.editModeOn = value
@@ -380,17 +416,19 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         self.color = self.brush().color() #remember my actual color
         if self.editModeOn == False:
             self.setFontColor(QtCore.Qt.darkGreen)
+            self.setLinePen(QtCore.Qt.darkGreen)
             for arrow in self.arrows:
                 arrow.setPen(QtGui.QPen(QtCore.Qt.darkGreen))
     
     def hoverLeaveEvent(self, event):
         if self.editModeOn == False:
             self.setFontColor(self.color)
+            self.setLinePen(QtCore.Qt.black)
             for arrow in self.arrows:
                 arrow.setPen(QtGui.QPen(QtCore.Qt.black))
         
     def mouseDoubleClickEvent(self, event):
-        FreeCAD.Console.PrintMessage("dupĺo clique")
+        FreeCAD.Console.PrintMessage("annotation dclick %s\n" % self.boundingRect())
        
     def mouseMoveEvent(self, event):
         for arrow in self.arrows:
@@ -404,6 +442,7 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         
     def paint(self, painter, option, widget=None):
         rect = self.boundingRect()
+        # Draw rect
         if self.editModeOn: 
             pen = QtGui.QPen()
             pen.setStyle(QtCore.Qt.DotLine)
@@ -411,11 +450,8 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
             pen.setWidthF(2)
             painter.setPen(pen)
             painter.drawRect(-5, -5, rect.width()-20, rect.height()-8)
-            #TODO: desenha pequeno quadraod na ponta da seta para reposicionar
-        pen = QtGui.QPen()
-        pen.setCapStyle(QtCore.Qt.RoundCap)
-        pen.setWidthF(mmtopt(0.5))
-        painter.setPen(pen)
+        # Draw shoulder line
+        painter.setPen(self.pen)
         if len(self.arrows) > 0:
             if self.config["type"] == "Bent Leader":
                 painter.drawLine(rect.left()+12, rect.bottom()-6,
@@ -433,7 +469,6 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
                 elif self.config["side"] == "Right":
                     painter.drawLine(rect.right()-2, y,
                                  rect.right()-15, y)
-            
         super(AnnotationItem, self).paint(painter, option, widget) 
         
     

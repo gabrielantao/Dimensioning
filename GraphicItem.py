@@ -31,7 +31,6 @@ from PySide import QtGui, QtCore
 from Utils import mmtopt
 
 
-### EXEMPLOS IMPORTANTES ###
 # https://doc.qt.io/qt-5/qtwidgets-graphicsview-diagramscene-example.html
 # https://doc.qt.io/archives/qt-4.8/qt-graphicsview-diagramscene-arrow-cpp.html
 # http://www.richelbilderbeek.nl/CppQtExample34.htm
@@ -50,36 +49,39 @@ class Arrow(QtGui.QGraphicsLineItem):
        local note, etc."""
     def __init__(self, parent=None, scene=None):
         super(Arrow, self).__init__(parent, scene)
-        self.head_point = [] #TODO: change for QPointF
-        self.middle_point = [] #TODO: change for QPointF
-        self.tail_point = []  #TODO: change for QPointF
+        self.editModeOn = True
 #        self.force_angle = True #only if one head_point is set
         self.default_angle = 45 # degree
 
-    
-    def setTailPos(self):
-        pass
-    
-    def setColor():
-        pass
 
-#    def boundingRect(self):
-#        # TODO: alterar os valores dos pontos
-#        extra = (self.pen().width() + 20) / 2.0
-#        p1 = self.line().p1()
-#        p2 = self.line().p2()
-#        return QtCore.QRectF(p1, QtCore.QSizeF(p2.x() - p1.x(), p2.y() - p1.y())).normalized().adjusted(-extra, -extra, extra, extra)
-
-#    def shape(self):
+    def getTailPos(self):
+        return self.line().p1()
+    
+    def getHeadPos(self):
+        return self.line().p2()
+    
+    def setTailPos(self, point):
+        """Set line P1 as tail."""
+        line = self.line()
+        line.setP1(point)
+        self.setLine(line)
+    
+    def setHeadPos(self, point):
+        """Set line P2 as head."""
+        line = self.line()
+        line.setP2(point)
+        self.setLine(line)
+    
+#    def setColor():
 #        pass
-        #TODO: consertar essa funcao nao existe self.arrowHead ainda
-#        path = super(Arrow, self).shape()
-#        path.addPolygon(self.arrowHead)
-#        return path
-#    def mouseMoveEvent(self, event):
-#        if self.mode == "editing":
-#            self.setPos(self.event.pos())
-#            self.update()
+
+    def setEditMode(self, value):
+        """Edit mode, true when editing"""
+        self.editModeOn = value
+        
+    def boundingRect(self):
+        rect = super(Arrow, self).boundingRect()
+        return rect.adjusted(-5, -5, 5, 5)
         
     def paint(self, painter, option, widget=None):
         pen = self.pen()
@@ -89,7 +91,36 @@ class Arrow(QtGui.QGraphicsLineItem):
         painter.setPen(pen)
         painter.setBrush(QtCore.Qt.black)
         painter.drawLine(self.line())
-        #TODO: draw arrow head
+
+
+class PointCatcher(QtGui.QGraphicsRectItem):
+    def __init__(self, arrow, parent=None, scene=None):
+        super(PointCatcher, self).__init__(parent, scene)
+        self.arrow = arrow # associated arrow
+        self.setPos(arrow.getHeadPos()+QtCore.QPointF(-3, -3))
+        self.setRect(0,0,10,10)
+        self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
+    
+    def mouseMoveEvent(self, event):
+        point = self.mapToScene(self.rect().center())
+        self.arrow.setHeadPos(point)
+        super(PointCatcher, self).mouseMoveEvent(event)
+        
+    def mouseReleaseEvent(self, event):
+        point = self.mapToScene(self.rect().center())
+        self.arrow.setHeadPos(point)
+        super(PointCatcher, self).mouseReleaseEvent(event)
+        
+    def paint(self, painter, option, widget=None):
+        pos = self.arrow.getHeadPos()
+        item_pos = self.mapFromScene(pos)
+        pen = QtGui.QPen()
+        pen.setColor(QtCore.Qt.darkGray)
+        pen.setJoinStyle(QtCore.Qt.RoundJoin)
+        pen.setWidthF(2)
+        painter.setPen(pen)
+        painter.drawRect(item_pos.x()-4, item_pos.y()-4, 9, 9)
+        
         
 #Linha de chamada (leader line)
 # Essa linha de chamada pode servir de base para anotacoes, solda, tolerancias geometricas...
