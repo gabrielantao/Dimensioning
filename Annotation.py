@@ -34,20 +34,20 @@ from Utils import getGraphicsView, mmtopt, setButtonColor
 from GraphicItem import Arrow
 ### TODO LIST
 # (V) criar a task dialog
-# (V) 2) conectar os eventos da dialog com o item
-# (V) 3) criar leader lines e shoulder lines
+# (V) conectar os eventos da dialog com o item
+# (V) criar leader lines e shoulder lines
 # 4) aceitar opcoes como alinhamento horizontal
 # 5) deletar linhas de chamada com botao del, ao clicar ele fica selecionado
-# 6) colocar quadrado na ponta da seta
-# 6.5) colocar funcionalidade para mover a ponta da seta pelo clique do mouse
-# 7) colocar as setas
-# 8) colocar a shoulder line na end bent
-# 9) colocar os icones no dialog widget no qt designer
+# $$ 6) colocar quadrado na ponta da seta
+# $$ 6.5) colocar funcionalidade para mover a ponta da seta pelo clique do mouse
+# $ 7) colocar as setas
+# (V) colocar a shoulder line na end bent
+# $ 9) colocar os icones no dialog widget no qt designer
 # 10) colocar a opcao de salvar como padrao
-# 11) apagar linha quando clicar no close
-# 12) colocar mais setas em posicoes diferentes
-# 13) 
-
+# (V) apagar linha quando clicar no close
+# $$$ 12) colocar mais setas em posicoes diferentes (girando 10graus entre enlas)
+# $$$ 13) iluminar todas as linhas de chamada e shoulder quando passar mouse sobre o texto
+# 14) criar feature e view 
 
 class AnnotationTask:
     """Create and handle annotation task dialog"""
@@ -94,6 +94,8 @@ class AnnotationTask:
         self.changeCursor(QtCore.Qt.ArrowCursor)
         if self.mode == self.EDIT_MODE:
             self.scene.removeItem(self.annotation_item)
+            for arrow in self.annotation_item.arrows:
+                self.scene.removeItem(arrow)
    
     ## SLOTS ##
     def mousePress(self, event):
@@ -301,30 +303,51 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         arrow = Arrow()
         self.setPivot(arrow)
         self.arrows.append(arrow)
-        
-    def setPivot(self, arrow): #head=[400,400]):
-        """Set pivot point in scene coordinate system."""
+   
+    def getPivot(self):
+        """Get pivot point in Annotation coordinate system."""
         rect = self.boundingRect()
+        # TODO: Use dict instead of all these if's
         if self.config["side"] == "Left":
-            if self.config["type"] == "Straight Leader" or self.config["type"] == "End Bent Leader":
+            if self.config["type"] == "Straight Leader":
                 if self.config["valign"] == "Top":
-                    pivot = rect.topLeft() + QtCore.QPointF(6.0, 6.0)
+                    pivot = rect.topLeft() + QtCore.QPointF(12, 6)
                 elif self.config["valign"] == "Center":
-                    pivot = QtCore.QPointF(rect.left()+6.0, rect.center().y())
+                    pivot = QtCore.QPointF(rect.left()+12, rect.center().y())
                 elif self.config["valign"] == "Bottom":
-                    pivot = rect.bottomLeft() + QtCore.QPointF(6.0, -6.0)
-            else: #Bent Line
-                pivot = QtCore.QPointF(rect.left()+6.0, rect.bottom()-6.0)
+                    pivot = rect.bottomLeft() + QtCore.QPointF(12, -6)
+            elif self.config["type"]  == "End Bent Leader":
+                if self.config["valign"] == "Top":
+                    pivot = rect.topLeft() + QtCore.QPointF(2, 6)
+                elif self.config["valign"] == "Center":
+                    pivot = QtCore.QPointF(rect.left()+2, rect.center().y())
+                elif self.config["valign"] == "Bottom":
+                    pivot = rect.bottomLeft() + QtCore.QPointF(2, -6)
+            elif self.config["type"]  == "Bent Leader": 
+                pivot = QtCore.QPointF(rect.left()+12, rect.bottom()-6)
         elif self.config["side"] == "Right":
-            if self.config["type"] == "Straight Leader" or self.config["type"] == "End Bent Leader":
+            if self.config["type"] == "Straight Leader":
                 if self.config["valign"] == "Top":
-                    pivot = rect.topRight() + QtCore.QPointF(-6.0, 6.0)
+                    pivot = rect.topRight() + QtCore.QPointF(-12, 6)
                 elif self.config["valign"] == "Center":
-                    pivot = QtCore.QPointF(rect.right()-6.0, rect.center().y())
+                    pivot = QtCore.QPointF(rect.right()-12, rect.center().y())
                 elif self.config["valign"] == "Bottom":
-                    pivot = rect.bottomRight() + QtCore.QPointF(-6.0, -6.0)
-            else: #Bent Line
-                pivot = QtCore.QPointF(rect.right()-6.0, rect.bottom()-6.0)
+                    pivot = rect.bottomRight() + QtCore.QPointF(-12, -6)
+            elif self.config["type"]  == "End Bent Leader":
+                if self.config["valign"] == "Top":
+                    pivot = rect.topRight() + QtCore.QPointF(-2, 6)
+                elif self.config["valign"] == "Center":
+                    pivot = QtCore.QPointF(rect.right()-2, rect.center().y())
+                elif self.config["valign"] == "Bottom":
+                    pivot = rect.bottomRight() + QtCore.QPointF(-2, -6)
+            elif self.config["type"]  == "Bent Leader":
+                pivot = QtCore.QPointF(rect.right()-12, rect.bottom()-6)
+        return pivot
+    
+    def setPivot(self, arrow): #head=[400,400]):
+        """Set pivot point to arrow tail and to annotation
+        in scene coordinate system."""
+        pivot = self.getPivot()
         self.setTransformOriginPoint(pivot)
         tail = self.mapToScene(pivot)
         head = QtCore.QPointF(400, 400) #TODO: gerar o ponto head aqui
@@ -351,16 +374,20 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
     
     def boundingRect(self):
         rect = super(AnnotationItem, self).boundingRect()
-        return rect.adjusted(-10, -10, 10, 10)
+        return rect.adjusted(-20, -10, 20, 10)
     
     def hoverEnterEvent(self, event):
         self.color = self.brush().color() #remember my actual color
         if self.editModeOn == False:
             self.setFontColor(QtCore.Qt.darkGreen)
+            for arrow in self.arrows:
+                arrow.setPen(QtGui.QPen(QtCore.Qt.darkGreen))
     
     def hoverLeaveEvent(self, event):
         if self.editModeOn == False:
             self.setFontColor(self.color)
+            for arrow in self.arrows:
+                arrow.setPen(QtGui.QPen(QtCore.Qt.black))
         
     def mouseDoubleClickEvent(self, event):
         FreeCAD.Console.PrintMessage("dupĺo clique")
@@ -383,20 +410,30 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
             pen.setColor(QtCore.Qt.gray)
             pen.setWidthF(2)
             painter.setPen(pen)
-            painter.drawRect(-5, -5, rect.width()-5, rect.height()-5)
+            painter.drawRect(-5, -5, rect.width()-20, rect.height()-8)
             #TODO: desenha pequeno quadraod na ponta da seta para reposicionar
+        pen = QtGui.QPen()
+        pen.setCapStyle(QtCore.Qt.RoundCap)
+        pen.setWidthF(mmtopt(0.5))
+        painter.setPen(pen)
         if len(self.arrows) > 0:
-            if self.config["type"] == "Straight Leader":
-                pass
-            elif self.config["type"] == "Bent Leader":
-                pen = QtGui.QPen()
-                pen.setCapStyle(QtCore.Qt.RoundCap)
-                pen.setWidthF(mmtopt(0.5))
-                painter.setPen(pen)
-                painter.drawLine(rect.left()+6.0, rect.bottom()-6.0,
-                                 rect.right()-5.8, rect.bottom()-6.0)
+            if self.config["type"] == "Bent Leader":
+                painter.drawLine(rect.left()+12, rect.bottom()-6,
+                                 rect.right()-11.8, rect.bottom()-6)
             elif self.config["type"] == "End Bent Leader":
-                pass
+                if self.config["valign"] == "Top":
+                    y = rect.top() + 6
+                elif self.config["valign"] == "Center":
+                    y = rect.center().y()
+                elif self.config["valign"] == "Bottom":
+                    y = rect.bottom() - 6
+                if self.config["side"] == "Left":
+                    painter.drawLine(rect.left()+2, y,
+                                 rect.left()+15, y)
+                elif self.config["side"] == "Right":
+                    painter.drawLine(rect.right()-2, y,
+                                 rect.right()-15, y)
+            
         super(AnnotationItem, self).paint(painter, option, widget) 
         
     
