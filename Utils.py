@@ -25,7 +25,7 @@
 """
 Convinience functions.
 """
-
+from math import sin, cos, radians
 import json
 import FreeCAD, FreeCADGui
 from sys import version_info
@@ -111,3 +111,14 @@ def setButtonColor(button, color, width=32, height=24):
     colorPix = QtGui.QPixmap(width, height)
     colorPix.fill(color)
     button.setIcon(QtGui.QIcon(colorPix))
+
+def rotate(vector, angle):
+    """Rotate a vector. Angle in degrees.
+    M = [cos(a) sin(a)] * [v_x]
+        [-sin(a cos(a)]   [v_y]
+    """
+    v_x = vector.x()
+    v_y = vector.y()
+    angle = radians(angle)
+    return QtCore.QPointF( v_x*cos(angle) + v_y*sin(angle),
+                          -v_x*sin(angle) + v_y*cos(angle))

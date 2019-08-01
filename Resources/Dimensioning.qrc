@@ -4,14 +4,20 @@
 		<file>icons/table_dd.svg</file>
 		<file>icons/drawing-shortcut-settings.svg</file>
 		<file>icons/centerView.svg</file>
+		<file>icons/annotation_left.svg</file>
+		<file>icons/align_center.svg</file>
 		<file>icons/help.svg</file>
 		<file>icons/centerLines.svg</file>
 		<file>icons/export_pdf.svg</file>
 		<file>icons/arrow_fork.svg</file>
+		<file>icons/annotation_right.svg</file>
+		<file>icons/insert_symbol.svg</file>
 		<file>icons/toleranceAdd.svg</file>
 		<file>icons/page.svg</file>
 		<file>icons/test.svg</file>
+		<file>icons/annotation_bottom.svg</file>
 		<file>icons/export_svg.svg</file>
+		<file>icons/arrow.svg</file>
 		<file>icons/new-drawing-page-4.svg</file>
 		<file>icons/text_holdline.svg</file>
 		<file>icons/radiusDimension.svg</file>
@@ -20,18 +26,23 @@
 		<file>icons/drawCircle.svg</file>
 		<file>icons/grabPointAdd.svg</file>
 		<file>icons/drawLineWithArrow.svg</file>
+		<file>icons/annotation_center.svg</file>
 		<file>icons/text_above.svg</file>
 		<file>icons/drawLine.svg</file>
 		<file>icons/arrow_dot.svg</file>
 		<file>icons/angularDimension.svg</file>
 		<file>icons/new-drawing-page-2.svg</file>
 		<file>icons/linearDimension.svg</file>
+		<file>icons/align_left.svg</file>
 		<file>icons/circularDimension.svg</file>
 		<file>icons/text_vertical.svg</file>
 		<file>icons/centerLine.svg</file>
+		<file>icons/align_right.svg</file>
 		<file>icons/drawCircularArc.svg</file>
 		<file>icons/preferences-dimensioning.svg</file>
+		<file>icons/annotation_bent.svg</file>
 		<file>icons/escape.svg</file>
+		<file>icons/annotation_top.svg</file>
 		<file>icons/drawing-orthoviews.svg</file>
 		<file>icons/arrow_open.svg</file>
 		<file>icons/linearDimensionStack.svg</file>
@@ -39,6 +50,7 @@
 		<file>icons/recomputeDimensions.svg</file>
 		<file>icons/new-drawing-page-1.svg</file>
 		<file>icons/drawing-landscape-new.svg</file>
+		<file>icons/align_justify.svg</file>
 		<file>icons/unfold.svg</file>
 		<file>icons/annotation.svg</file>
 		<file>icons/exportToDxf.svg</file>
@@ -47,6 +59,7 @@
 		<file>icons/textEdit.svg</file>
 		<file>icons/new_page.svg</file>
 		<file>icons/halfLinearDimension.svg</file>
+		<file>icons/annotation_straight.svg</file>
 		<file>icons/textMove.svg</file>
 		<file>icons/textAdd.svg</file>
 		<file>icons/text_horizontal.svg</file>
@@ -56,6 +69,7 @@
 		<file>ui/preferences_dimensionline.ui</file>
 		<file>ui/PrefsTemplate.ui</file>
 		<file>ui/preferences_line.ui</file>
+		<file>ui/image_task.ui</file>
 		<file>ui/annotation_task.ui</file>
 		<file>ui/preferences_general.ui</file>
 		<file>fonts/ISO_3098.ttf</file>

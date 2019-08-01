@@ -33,22 +33,10 @@ from Utils import getGraphicsView, mmtopt, setButtonColor
 
 from GraphicItem import Arrow, PointCatcher
 ### TODO LIST
-# (V) criar a task dialog
-# (V) conectar os eventos da dialog com o item
-# (V) criar leader lines e shoulder lines
-# 4) aceitar opcoes como alinhamento horizontal
-# 5) deletar linhas de chamada com botao del, ao clicar ele fica selecionado
-# (V) 6) colocar quadrado na ponta da seta
-# (V) 6.5) colocar funcionalidade para mover a ponta da seta pelo clique do mouse
-# $$ 7) colocar as setas
-# (V) colocar a shoulder line na end bent
-# $$ 9) colocar os icones no dialog widget no qt designer
-# $ 10) colocar a opcao de salvar como padrao
-# (V) apagar linha quando clicar no close
-# (V) 12) colocar mais setas em posicoes diferentes 
-# (V) 13) iluminar todas as linhas de chamada e shoulder quando passar mouse sobre o texto
-# 14) criar feature e view 
-# (V) 15) colocar os demais icones no insert icon
+# () implement text horizontal alignment 
+# () implement functionality to delete arrows (delete button)
+# () implement "save as default" functionality
+# () criar feature e view 
 
 class AnnotationTask:
     """Create and handle annotation task dialog"""
@@ -59,7 +47,6 @@ class AnnotationTask:
         self.annotation_item = None
         self.form = FreeCADGui.PySideUic.loadUi(":/ui/annotation_task.ui")
         self.form.font_family.setCurrentFont(QtGui.QFont("ISO 3098"))
-        self.form.leader_add.setIcon(QtGui.QIcon(":/icons/plus.png")) #TODO: deixar para setar isso no arquivo qt designer
         setButtonColor(self.form.font_color_button, QtGui.QColor(0, 0, 0, 255))
         self.createColorDialog()
         self.createSymbolButton()
@@ -133,29 +120,33 @@ class AnnotationTask:
                 self.changeCursor(QtCore.Qt.PointingHandCursor)
         
     def colorDialogAccepted(self, color):
+        """Slot cancel color dialog. Reset actual color."""
         setButtonColor(self.form.font_color_button, color)
         self.form.font_color_lineEdit.clear()
         self.form.font_color_lineEdit.insert(str(color.getRgb()).strip("()"))
     
     def colorDialogRejected(self):
-        """Slot to return color to color before open color dialog"""
+        """Slot to return color to color before open color dialog."""
         colorRGBA = map(int, self.form.font_color_lineEdit.text().split(","))
         color = QtGui.QColor(*colorRGBA)
         self.annotation_item.setFontColor(color)
     
 
     def fontChanged(self, font):
+        """Set new font when it has changed."""
         size = self.form.font_size.value() 
         self.annotation_item.setFont(font)
         self.annotation_item.setFontSize(size) #ensure same size
         
     def textChanged(self):
+        """Set new text when it has changed."""
         text = self.form.text_widget.toPlainText()
         self.annotation_item.setText(text)
         for arrow in self.annotation_item.arrows:
             self.annotation_item.setPivot(arrow)
     
     def createArrow(self):
+        """Add arrow to scene."""
         self.annotation_item.addArrow()
         self.scene.addItem(self.annotation_item.arrows[-1])
         self.scene.addItem(self.annotation_item.point_catchers[-1])
@@ -192,10 +183,10 @@ class AnnotationTask:
         self.form.leader_head.currentIndexChanged.disconnect(self.configLeaderLine)
     
     def changeCursor(self, cursor):
+        """Change mouse cursor denpending on mode."""
         self.graphics_view.viewport().setCursor(cursor)
         
-    # NOTE: This following two methods can be reimplemented as decorated methods. 
-    #       Decorators in a superclass.
+    # NOTE: This following two methods can be reimplemented as inherited methods. 
     def saveDefaultConfig(self):
         """Save default configs as a json temporary file. 
         Each document has its own configs"""
@@ -216,6 +207,7 @@ class AnnotationTask:
             #TODO: configure here all widgets 
     
     def configFont(self):
+        """Configure font."""
         font = self.form.font_family.currentFont()
         size = self.form.font_size.value()
         colorRGBA = map(int, self.form.font_color_lineEdit.text().split(","))
@@ -229,6 +221,7 @@ class AnnotationTask:
         self.annotation_item.setRotation(angle)
         
     def configLeaderLine(self, index=0):
+        """Configure leader line."""
         type_ = self.form.leader_type.currentText()
         side = self.form.leader_side.currentText()
         halign = self.form.horizontal_align.currentText()
@@ -239,6 +232,7 @@ class AnnotationTask:
                                               valign=valign, head=head)
 
     def createColorDialog(self):
+        """Create a new dialog for color."""
         color = map(int, self.form.font_color_lineEdit.text().split(","))
         color = QtGui.QColor(*color)
         self.dialog = QtGui.QColorDialog(color, self.form)
@@ -318,14 +312,17 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         self.update()
         for arrow in self.arrows:
             self.setPivot(arrow)
+            arrow.setHead(self.config["head"])
     
     def addArrow(self):
         """Slot for arrow creation"""
         if not self.editModeOn:
             return
         arrow = Arrow()
-        self.setPivot(arrow) # set tail
-        # set head
+        # Set tail
+        self.setPivot(arrow) 
+        # Set head
+        arrow.setHead(self.config["head"])
         if len(self.arrows) > 0:
             last_arrow = self.arrows[-1]
             arrow.setHeadPos(last_arrow.getHeadPos()+QtCore.QPointF(0, 20))
@@ -337,7 +334,7 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
     def getPivot(self):
         """Get pivot point in Annotation coordinate system."""
         rect = self.boundingRect()
-        # TODO: Use dict instead of all these if's
+        # TODO: Use dict instead of all these if's?
         if self.config["side"] == "Left":
             if self.config["type"] == "Straight Leader":
                 if self.config["valign"] == "Top":
@@ -400,6 +397,7 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         self.setBrush(brush)
     
     def setLinePen(self, color, width=0.5):
+        """Set line to draw shoulder line."""
         self.pen = QtGui.QPen(color)
         self.pen.setCapStyle(QtCore.Qt.RoundCap)
         self.pen.setWidthF(mmtopt(0.5))
@@ -419,6 +417,7 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
             self.setLinePen(QtCore.Qt.darkGreen)
             for arrow in self.arrows:
                 arrow.setPen(QtGui.QPen(QtCore.Qt.darkGreen))
+                arrow.setBrush(QtCore.Qt.darkGreen)
     
     def hoverLeaveEvent(self, event):
         if self.editModeOn == False:
@@ -426,6 +425,7 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
             self.setLinePen(QtCore.Qt.black)
             for arrow in self.arrows:
                 arrow.setPen(QtGui.QPen(QtCore.Qt.black))
+                arrow.setBrush(QtCore.Qt.black)
         
     def mouseDoubleClickEvent(self, event):
         FreeCAD.Console.PrintMessage("annotation dclick %s\n" % self.boundingRect())

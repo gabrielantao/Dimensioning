@@ -174,24 +174,46 @@
         </item>
         <item>
          <widget class="QComboBox" name="horizontal_align">
+          <property name="iconSize">
+           <size>
+            <width>24</width>
+            <height>24</height>
+           </size>
+          </property>
           <item>
            <property name="text">
             <string>Left</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../Dimensioning.qrc">
+             <normaloff>:/icons/align_left.svg</normaloff>:/icons/align_left.svg</iconset>
            </property>
           </item>
           <item>
            <property name="text">
             <string>Center</string>
            </property>
+           <property name="icon">
+            <iconset resource="../Dimensioning.qrc">
+             <normaloff>:/icons/align_center.svg</normaloff>:/icons/align_center.svg</iconset>
+           </property>
           </item>
           <item>
            <property name="text">
             <string>Right</string>
            </property>
+           <property name="icon">
+            <iconset resource="../Dimensioning.qrc">
+             <normaloff>:/icons/align_right.svg</normaloff>:/icons/align_right.svg</iconset>
+           </property>
           </item>
           <item>
            <property name="text">
             <string>Justify</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../Dimensioning.qrc">
+             <normaloff>:/icons/align_justify.svg</normaloff>:/icons/align_justify.svg</iconset>
            </property>
           </item>
          </widget>
@@ -237,33 +259,65 @@
       </item>
       <item row="2" column="1">
        <widget class="QComboBox" name="leader_side">
+        <property name="iconSize">
+         <size>
+          <width>24</width>
+          <height>24</height>
+         </size>
+        </property>
         <item>
          <property name="text">
           <string>Left</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../Dimensioning.qrc">
+           <normaloff>:/icons/annotation_left.svg</normaloff>:/icons/annotation_left.svg</iconset>
          </property>
         </item>
         <item>
          <property name="text">
           <string>Right</string>
          </property>
+         <property name="icon">
+          <iconset resource="../Dimensioning.qrc">
+           <normaloff>:/icons/annotation_right.svg</normaloff>:/icons/annotation_right.svg</iconset>
+         </property>
         </item>
        </widget>
       </item>
       <item row="1" column="1">
        <widget class="QComboBox" name="leader_type">
+        <property name="iconSize">
+         <size>
+          <width>24</width>
+          <height>24</height>
+         </size>
+        </property>
         <item>
          <property name="text">
           <string>Straight Leader</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../Dimensioning.qrc">
+           <normaloff>:/icons/annotation_straight.svg</normaloff>:/icons/annotation_straight.svg</iconset>
          </property>
         </item>
         <item>
          <property name="text">
           <string>Bent Leader</string>
          </property>
+         <property name="icon">
+          <iconset resource="../Dimensioning.qrc">
+           <normaloff>:/icons/annotation_bent.svg</normaloff>:/icons/annotation_bent.svg</iconset>
+         </property>
         </item>
         <item>
          <property name="text">
           <string>End Bent Leader</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../Dimensioning.qrc">
+           <normaloff>:/icons/annotation_center.svg</normaloff>:/icons/annotation_center.svg</iconset>
          </property>
         </item>
        </widget>
@@ -284,19 +338,37 @@
       </item>
       <item row="3" column="1">
        <widget class="QComboBox" name="leader_valign">
+        <property name="iconSize">
+         <size>
+          <width>24</width>
+          <height>24</height>
+         </size>
+        </property>
         <item>
          <property name="text">
           <string>Top</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../Dimensioning.qrc">
+           <normaloff>:/icons/annotation_top.svg</normaloff>:/icons/annotation_top.svg</iconset>
          </property>
         </item>
         <item>
          <property name="text">
           <string>Center</string>
          </property>
+         <property name="icon">
+          <iconset resource="../Dimensioning.qrc">
+           <normaloff>:/icons/annotation_center.svg</normaloff>:/icons/annotation_center.svg</iconset>
+         </property>
         </item>
         <item>
          <property name="text">
           <string>Bottom</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../Dimensioning.qrc">
+           <normaloff>:/icons/annotation_bottom.svg</normaloff>:/icons/annotation_bottom.svg</iconset>
          </property>
         </item>
        </widget>
@@ -310,19 +382,46 @@
       </item>
       <item row="4" column="1">
        <widget class="QComboBox" name="leader_head">
+        <property name="iconSize">
+         <size>
+          <width>24</width>
+          <height>24</height>
+         </size>
+        </property>
         <item>
          <property name="text">
-          <string>Arrow</string>
+          <string>Filled Arrow</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../Dimensioning.qrc">
+           <normaloff>:/icons/arrow_filled.svg</normaloff>:/icons/arrow_filled.svg</iconset>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Open Arrow</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../Dimensioning.qrc">
+           <normaloff>:/icons/arrow_open.svg</normaloff>:/icons/arrow_open.svg</iconset>
          </property>
         </item>
         <item>
          <property name="text">
           <string>Dot</string>
          </property>
+         <property name="icon">
+          <iconset resource="../Dimensioning.qrc">
+           <normaloff>:/icons/arrow_dot.svg</normaloff>:/icons/arrow_dot.svg</iconset>
+         </property>
         </item>
         <item>
          <property name="text">
           <string>None</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../Dimensioning.qrc">
+           <normaloff>:/icons/arrow.svg</normaloff>:/icons/arrow.svg</iconset>
          </property>
         </item>
        </widget>
@@ -337,6 +436,10 @@
         </property>
         <property name="text">
          <string>Add Line</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../Dimensioning.qrc">
+          <normaloff>:/icons/plus.png</normaloff>:/icons/plus.png</iconset>
         </property>
        </widget>
       </item>
@@ -368,6 +471,8 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../Dimensioning.qrc"/>
+ </resources>
  <connections/>
 </ui>

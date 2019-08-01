@@ -28,8 +28,7 @@ Superclasses for all graphic items on page.
 """
 
 from PySide import QtGui, QtCore
-from Utils import mmtopt
-
+from Utils import mmtopt, rotate
 
 # https://doc.qt.io/qt-5/qtwidgets-graphicsview-diagramscene-example.html
 # https://doc.qt.io/archives/qt-4.8/qt-graphicsview-diagramscene-arrow-cpp.html
@@ -49,51 +48,79 @@ class Arrow(QtGui.QGraphicsLineItem):
        local note, etc."""
     def __init__(self, parent=None, scene=None):
         super(Arrow, self).__init__(parent, scene)
-        self.editModeOn = True
-#        self.force_angle = True #only if one head_point is set
-        self.default_angle = 45 # degree
-
+        self.head = "" # head name
+        self.tail = "" # tail name
+        self.setBrush(QtCore.Qt.black)
+    
+    def setTail(self, name):
+        """Set tail type name."""
+        self.tail = name
+    
+    
+    def setHead(self, name):
+        """Set head type name."""
+        self.head = name
+        
+    def setBrush(self, color):
+        """Set brush for paint arrow head and tail."""
+        self.brush = QtGui.QBrush(color)
 
     def getTailPos(self):
+        """Get scene point P1 as tail."""
         return self.line().p1()
     
     def getHeadPos(self):
+        """Get scene point P2 as head."""
         return self.line().p2()
     
     def setTailPos(self, point):
-        """Set line P1 as tail."""
+        """Set scene point P1 as tail."""
         line = self.line()
         line.setP1(point)
         self.setLine(line)
     
     def setHeadPos(self, point):
-        """Set line P2 as head."""
+        """Set scene point P2 as head."""
         line = self.line()
         line.setP2(point)
         self.setLine(line)
-    
-#    def setColor():
-#        pass
-
-    def setEditMode(self, value):
-        """Edit mode, true when editing"""
-        self.editModeOn = value
-        
+   
     def boundingRect(self):
         rect = super(Arrow, self).boundingRect()
         return rect.adjusted(-5, -5, 5, 5)
         
     def paint(self, painter, option, widget=None):
+        # Draw line
         pen = self.pen()
         pen.setCapStyle(QtCore.Qt.RoundCap)
         pen.setJoinStyle(QtCore.Qt.RoundJoin)
         pen.setWidthF(mmtopt(0.5))
         painter.setPen(pen)
-        painter.setBrush(QtCore.Qt.black)
+        painter.setBrush(self.brush)
         painter.drawLine(self.line())
+        # Draw tail
+        # TODO: implement tail
+        # Draw head
+        pos = self.mapFromScene(self.getHeadPos())
+        angle = self.line().angle()
+        if self.head == "Filled Arrow":
+            polygon = QtGui.QPolygonF()
+            polygon.append(pos - rotate(QtCore.QPointF(12, -2), angle))
+            polygon.append(pos + QtCore.QPointF(0, 0))
+            polygon.append(pos - rotate(QtCore.QPointF(12, 2), angle))
+            painter.drawPolygon(polygon)
+        elif self.head == "Open Arrow":
+            polyline = QtGui.QPolygonF()
+            polyline.append(pos - rotate(QtCore.QPointF(12, -3), angle))
+            polyline.append(pos + QtCore.QPointF(0, 0))
+            polyline.append(pos - rotate(QtCore.QPointF(12, 3), angle))
+            painter.drawPolyline(polyline)
+        elif self.head == "Dot":
+            painter.drawEllipse(pos, 2, 2)
 
 
 class PointCatcher(QtGui.QGraphicsRectItem):
+    """This class implements a tiny region to move arrow head or tail."""
     def __init__(self, arrow, parent=None, scene=None):
         super(PointCatcher, self).__init__(parent, scene)
         self.arrow = arrow # associated arrow
@@ -121,23 +148,4 @@ class PointCatcher(QtGui.QGraphicsRectItem):
         painter.setPen(pen)
         painter.drawRect(item_pos.x()-4, item_pos.y()-4, 9, 9)
         
-        
-#Linha de chamada (leader line)
-# Essa linha de chamada pode servir de base para anotacoes, solda, tolerancias geometricas...
-# Alguns features tem opcao de escolher uma linha de extensao ou nao
 
-# Comecar por esse simbolo
-class SurfaceFinishingItem(GraphicItem):
-    """Build surface finishing symbols"""
-    # Como funciona
-    # 1) clica numa linha qualquer tipo (line, path, elipse, etc)
-    # 2) desenha o simbolo base padrao
-    # 3) insere as anotacoes do acabamento no simbolo (setadas na janela dialog)
-    # 3) clica na posicao que deve ficar e da enter para inserir
-    def __init__(self):
-        self.show_leader_line = False
-        self.arrowline = None #ArrowLine
-
-class WeldingItem(GraphicItem):
-    """Build welding symbols"""
-    pass
