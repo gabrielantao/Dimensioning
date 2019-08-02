@@ -55,7 +55,8 @@ class PageGraphicsView(QtGui.QGraphicsView):
         QtGui.QGraphicsView.__init__(self)
         self.setScene(PageScene())
         # TODO: Inserir o icone da pagina aqui 
-#        self.setWindowIcon(QtGui.QIcon("/Resources/icons/page.svg"))
+#        import Dimensioning_rc
+#        self.setWindowIcon(QtGui.QIcon(":/icons/page.svg"))
         #TODO: a pagina deve ser so deslocada com as setas do teclado,
         #      com scroolbar ou com atalho CTRL (aparece maozinha) e clique do mouse
         #      reservar a mao para deslocar as views da pagina 

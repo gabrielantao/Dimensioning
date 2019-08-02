@@ -118,6 +118,10 @@ class AnnotationTask:
                 self.disconnectSlots()
                 self.annotation_item = None
                 self.changeCursor(QtCore.Qt.PointingHandCursor)
+                # TODO: create a feature and view
+        # TODO: implement close taskdialog with Escape key
+        elif event.key() == QtCore.Qt.Key_Escape: #close
+            pass 
         
     def colorDialogAccepted(self, color):
         """Slot cancel color dialog. Reset actual color."""
@@ -428,6 +432,7 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
                 arrow.setBrush(QtCore.Qt.black)
         
     def mouseDoubleClickEvent(self, event):
+        #TODO: must be implemented
         FreeCAD.Console.PrintMessage("annotation dclick %s\n" % self.boundingRect())
        
     def mouseMoveEvent(self, event):
@@ -485,6 +490,7 @@ class Annotation:
 
     def execute(self, obj):
         FreeCAD.Console.PrintMessage("Recompute Python Box feature\n")
+
 
 class AnnotationView:
     """View for a text annotation in draw"""

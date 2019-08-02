@@ -27,6 +27,7 @@
 import FreeCADGui, FreeCAD
 import Page
 import Annotation
+import Image
 
 import Dimensioning_rc #create resources
 from PySide.QtGui import QFontDatabase

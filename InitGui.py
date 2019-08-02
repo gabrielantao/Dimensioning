@@ -35,7 +35,8 @@ class DimensioningWorkbench(FreeCADGui.Workbench):
     def Initialize(self):
         # copy the Drawing toolbar
         self.appendToolbar("Drawing Workbench Commands", 
-                           ["Dimensioning_Page", "Dimensioning_Annotation"])
+                           ["Dimensioning_Page", "Dimensioning_Annotation",
+                            "Dimensioning_Image"])
 
       
         FreeCADGui.addIconPath(':/icons')
