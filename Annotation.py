@@ -29,7 +29,7 @@ Local notes to drawing.
 
 from PySide import QtGui, QtCore
 import FreeCAD, FreeCADGui
-from Utils import getGraphicsView, mmtopt, setButtonColor
+from Utils import getGraphicsView, mmtopt, pttomm, setButtonColor
 
 from GraphicItem import Arrow, PointCatcher
 ### TODO LIST
@@ -37,6 +37,10 @@ from GraphicItem import Arrow, PointCatcher
 # () implement functionality to delete arrows (delete button)
 # () implement "save as default" functionality
 # () criar feature e view 
+# () rearrumar as funcoes fontchanged e textchanged, passar elas para a classe do anotationitem 
+# () colocar update somente nas funcoes do proprio annotationitem
+# () reescrever os metodos de set para copiar a fonte e rearrumar somente a variavel em questao 
+
 
 class AnnotationTask:
     """Create and handle annotation task dialog"""
@@ -110,15 +114,20 @@ class AnnotationTask:
                 return
             if self.mode == self.EDIT_MODE:
                 self.mode = self.INSERT_MODE
-                FreeCAD.Console.PrintMessage("Text added.\n")
+                FreeCAD.Console.PrintMessage("Annotation created.\n")
                 self.annotation_item.setEditMode(False) 
                 for catcher in self.annotation_item.point_catchers:
                     self.scene.removeItem(catcher)
                 self.annotation_item.update()
                 self.disconnectSlots()
-                self.annotation_item = None
                 self.changeCursor(QtCore.Qt.PointingHandCursor)
-                # TODO: create a feature and view
+                # create a feature and view
+                annotation = FreeCAD.ActiveDocument.addObject("App::FeaturePython", 
+                                                              "Annotation")
+                Annotation(annotation)
+                AnnotationView(annotation.ViewObject, self.annotation_item)
+                self.annotation_item = None
+                FreeCAD.ActiveDocument.recompute()
         # TODO: implement close taskdialog with Escape key
         elif event.key() == QtCore.Qt.Key_Escape: #close
             pass 
@@ -375,6 +384,34 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
                 pivot = QtCore.QPointF(rect.right()-12, rect.bottom()-6)
         return pivot
     
+    def getFontFamily(self):
+        """Get font family name."""
+        return self.font().family()
+    
+    def getFontSize(self):
+        """Get font size in millimiters."""
+        return pttomm(self.font().pointSizeF())
+    
+    def getFontColor(self, colors="rgba", type_="float"):
+        """Get font color rgba (0.0 - 1.0)"""
+        color = self.brush().color()
+        if type_ == "float":
+            dic = {"r": color.redF(), "g": color.greenF(), 
+                   "b": color.blueF(),"a": color.alphaF()}
+        elif type_ == "integer":
+            dic = {"r": color.red(), "g": color.green(), 
+                   "b": color.blue(), "a":color.alpha()}
+        out = [dic[c] for c in colors]
+        if len(out) == 1:
+            return out[0]
+        return tuple(out)
+    
+    def getText(self, split=True):
+        """Get font text. Split lines into list."""
+        if split:
+            return self.text().split("\n")
+        return self.text()
+
     def setPivot(self, arrow):
         """Set pivot point to arrow tail and to annotation
         in scene coordinate system."""
@@ -384,7 +421,16 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         arrow.setTailPos(tail)
         self.update()
         arrow.update()
-        
+      
+    def setFontByName(self, name):
+        """Set font by family name"""
+        font = self.font()
+        font.setFamily(name)
+        self.setFont(font)
+        for arrow in self.arrows:
+            self.setPivot(arrow)
+        self.update()
+    
     def setFontSize(self, size):
         """Set font size in millimeter. It converts mm in pt."""
         font = self.font()
@@ -392,6 +438,7 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         self.setFont(font)
         for arrow in self.arrows:
             self.setPivot(arrow)
+        self.update()
         
     def setFontColor(self, color):
         """Set font color"""
@@ -399,13 +446,21 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         brush.setStyle(QtCore.Qt.SolidPattern)
         brush.setColor(color)
         self.setBrush(brush)
-    
+        self.update()
+        
     def setLinePen(self, color, width=0.5):
         """Set line to draw shoulder line."""
         self.pen = QtGui.QPen(color)
         self.pen.setCapStyle(QtCore.Qt.RoundCap)
         self.pen.setWidthF(mmtopt(0.5))
-        
+        self.update()
+    
+    def setVisible(self, visible):
+        """Set visibility to annotation and its arrows."""
+        super(AnnotationItem, self).setVisible(visible)
+        for arrow in self.arrows:
+            arrow.setVisible(visible)
+            
     def setEditMode(self, value):
         """Edit mode, true when editing (or creating) the annotation"""
         self.editModeOn = value
@@ -480,8 +535,24 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
 class Annotation:
     """Feature for a text annotation in draw"""
     def __init__(self, obj):
-        self.text = ""
-        self.arrowline = None #ArrowLine
+        obj.addProperty("App::PropertyFont", "FontFamily", 
+                        "Font", "Font family")
+        obj.addProperty("App::PropertyLength", "FontSize", 
+                        "Font", "Font size")
+        obj.addProperty("App::PropertyColor", "FontColor", 
+                        "Font", "Font color")
+        obj.addProperty("App::PropertyPercent", "Opacity", 
+                        "Font", "Font opacity")
+        obj.addProperty("App::PropertyStringList", "Text",
+                        "Content", "Annotation text")
+#        obj.addProperty("App::PropertyEnumeration", "HorizontalAlign",
+#                        "Content", "Horizontal alignment").HorizontalAlign = []
+        obj.addProperty("App::PropertyEnumeration", 
+                        "VerticalAlign",
+                        "Content", 
+                        "Vertical alignment").VerticalAlign = ["Top", "Center", "Bottom"]
+        obj.addProperty("App::PropertyAngle", "Orientation",
+                        "Content", "Text Orientation")
    
         obj.Proxy = self
 
@@ -489,22 +560,72 @@ class Annotation:
         pass
 
     def execute(self, obj):
-        FreeCAD.Console.PrintMessage("Recompute Python Box feature\n")
+        pass
 
 
 class AnnotationView:
     """View for a text annotation in draw"""
-    def __init__(self, vobj):
+    def __init__(self, vobj, graphics_item):
+        self.annotation = graphics_item
         vobj.Proxy = self
         
     def attach(self, vp):
-        pass
+        # NOTE: it must be done to show coulored icon in tree view 
+        # https://forum.freecadweb.org/viewtopic.php?t=12139
+        from pivy import coin
+        vp.addDisplayMode(coin.SoGroup(), "Standard")
+        # Set feature properties
+        feature = vp.Object
+        alpha = self.annotation.getFontColor("a")
+        feature.FontFamily = self.annotation.getFontFamily()
+        feature.FontSize = self.annotation.getFontSize()
+        feature.FontColor = self.annotation.getFontColor("rgb")
+        feature.Opacity = int(alpha * 100) #percent
+        feature.Text = self.annotation.getText()
+        feature.Orientation = self.annotation.rotation()
     
     def onChanged(self, vp, prop):
-        pass
+        """Called when AnnotationView property changes"""
+        if prop == "Visibility":
+            visibility = vp.getPropertyByName("Visibility")
+            self.annotation.setVisible(visibility)
                 
     def updateData(self, fp, prop):
-        pass
+        """Called when Annotation property changes"""
+        if prop == "FontFamily":
+            family = fp.getPropertyByName("FontFamily")
+            self.annotation.setFontByName(family)
+#            font = self.annotation.font()
+#            font.setFamily(family)
+#            self.annotation.setFont(font)
+        elif prop == "FontSize":
+            size = fp.getPropertyByName("FontSize")
+            self.annotation.setFontSize(size)
+        elif prop == "FontColor" or prop == "Opacity":
+            color = fp.getPropertyByName("FontColor")
+            alpha = fp.getPropertyByName("Opacity")
+            qcolor = QtGui.QColor()
+            qcolor.setRgbF(color[0], color[1], color[2], alpha/100.0)
+            self.annotation.setFontColor(qcolor)
+        elif prop == "Text":
+            text = fp.getPropertyByName("Text")
+            self.annotation.setText("\n".join(text))
+        elif prop == "Orientation":
+            orientation = fp.getPropertyByName("Orientation")
+            self.annotation.setRotation(orientation)
+        
+            
+    def getIcon(self):
+        return ":/icons/annotation.svg"
+    
+    def getDisplayModes(self,obj):
+        """Return a list of display modes."""
+        return ["Standard"]
+
+    def getDefaultDisplayMode(self):
+        """Return the name of the default display mode. 
+        It must be defined in getDisplayModes."""
+        return "Standard"
     
         
 class AnnotationCommand:
@@ -522,11 +643,9 @@ class AnnotationCommand:
         FreeCAD.ActiveDocument.recompute()
 
     def GetResources(self):
-        return {
-            "Pixmap" : ":/icons/annotation.svg",
-            "Accel" : "Shift+A",
-            "MenuText": "Annotation",
-            "ToolTip": "Create a note."
-            }
+        return {"Pixmap" : ":/icons/annotation.svg",
+                "Accel" : "Shift+A",
+                "MenuText": "Annotation",
+                "ToolTip": "Create a note."}
 
 FreeCADGui.addCommand("Dimensioning_Annotation", AnnotationCommand())

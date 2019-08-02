@@ -56,11 +56,15 @@ class ImageTask:
         return True #close dialog
         
     def accept(self):
-        FreeCAD.Console.PrintMessage("Svg image created.\n")
         if self.svgImage:
             self.svgImage.setEditMode(False)
             self.svgImage.update()
-            # TODO: create feature here
+            image = FreeCAD.ActiveDocument.addObject("App::FeaturePython", 
+                                                     "Image")
+            Image(image)
+            ImageView(image.ViewObject, self.svgImage)
+            FreeCAD.ActiveDocument.recompute()
+            FreeCAD.Console.PrintMessage("Svg image created.\n")
             return True #close dialog
         return False
 
@@ -76,7 +80,6 @@ class ImageTask:
         self.form.scale.valueChanged.connect(self.svgImage.setScale)
         self.form.rotation.valueChanged.connect(self.svgImage.setRotation)
         self.form.opacity.valueChanged.connect(self.svgImage.setOpacity)
-        
     
     def disconnectSlots(self):
         """Disconnect all slot functions to dialog widgets"""
@@ -121,9 +124,12 @@ class ImageItem(QtSvg.QGraphicsSvgItem):
     def __init__(self, filepath):
         super(ImageItem, self).__init__(filepath)
         self.editModeOn = True
-        self.filename = filepath
+        self.filepath = filepath
         self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
         self.setCursor(QtCore.Qt.OpenHandCursor)
+    
+    def opacity(self):
+        return int(super(ImageItem, self).opacity()*100)
     
     def setOpacity(self, opacity):
         """Change opacity."""
@@ -150,35 +156,86 @@ class ImageItem(QtSvg.QGraphicsSvgItem):
 class Image:
     """Feature for a svg image in draw."""
     def __init__(self, obj):
-        self.path = ""
-        self.scale = 1.0
-   
+        obj.addProperty("App::PropertyFile", "File", "General", "File path", 1)
+        obj.addProperty("App::PropertyFloat", "Scale", "General",
+                         "Image scale")
+        obj.addProperty("App::PropertyAngle", "Rotation", "General",
+                         "Image rotation")
+        obj.addProperty("App::PropertyPercent", "Opacity", "General",
+                         "Image opacity")
+        obj.addProperty("App::PropertyFloat", "Zvalue", "General",
+                         "Image Z-value")
         obj.Proxy = self
 
     def onChanged(self, fp, prop):
-        pass
-
+        pass # Let ImageView handle this
+    
     def execute(self, obj):
-        FreeCAD.Console.PrintMessage("Recompute Python Box feature\n")
+        pass
 
 
 class ImageView:
     """View for a svg image in draw."""
-    def __init__(self, vobj):
-        vobj.addProperty("App::PropertyFloat", "Opacity", "General",
-                         "Image opacity")
+    def __init__(self, vobj, graphics_item):
+        self.image = graphics_item
         vobj.Proxy = self
         
     def attach(self, vp):
+        # NOTE: it must be done to show coulored icon in tree view 
+        # https://forum.freecadweb.org/viewtopic.php?t=12139
+        from pivy import coin
+        vp.addDisplayMode(coin.SoGroup(), "Standard") 
+        # Set feature properties
+        feature = vp.Object
+        feature.File = self.image.filepath
+        feature.Scale = self.image.scale()
+        feature.Rotation = self.image.rotation()
+        feature.Opacity = self.image.opacity()
+        feature.Zvalue = self.image.zValue()
+        
+    def doubleClicked(self, vobj): #??? it doesn't work. Why?
         pass
     
     def onChanged(self, vp, prop):
-        pass
+        """Called when ImageView property changes"""
+        if prop == "Visibility":
+            visibility = vp.getPropertyByName("Visibility")
+            self.image.setVisible(visibility)
                 
     def updateData(self, fp, prop):
-        pass
+        """Called when Image property changes"""
+        if prop == "Scale":
+            scale = fp.getPropertyByName("Scale")
+            if scale < 0:
+                scale = -scale
+                fp.Scale = scale
+            self.image.setScale(scale)
+        elif prop == "Rotation":
+            rotation = fp.getPropertyByName("Rotation")
+            self.image.setRotation(rotation)
+        elif prop == "Opacity":
+            opacity = fp.getPropertyByName("Opacity")
+            self.image.setOpacity(opacity)
+        elif prop == "Zvalue":
+            zvalue = fp.getPropertyByName("Zvalue")
+            if zvalue < 0:
+                zvalue = 0
+                fp.Zvalue = 0
+            self.image.setZValue(zvalue)
+
+    def getIcon(self):
+        return ":/icons/image.svg"
     
-        
+    def getDisplayModes(self,obj):
+        """Return a list of display modes."""
+        return ["Standard"]
+
+    def getDefaultDisplayMode(self):
+        """Return the name of the default display mode. 
+        It must be defined in getDisplayModes."""
+        return "Standard"
+     
+    
 class ImageCommand:
     """Command for creating svg image."""   
     def IsActive(self):
@@ -191,14 +248,12 @@ class ImageCommand:
         if not graphics_view: # page is not active
             return 
         FreeCADGui.Control.showDialog(ImageTask(graphics_view))
-        FreeCAD.ActiveDocument.recompute()
+#        FreeCAD.ActiveDocument.recompute()
 
     def GetResources(self):
-        return {
-            "Pixmap" : ":/icons/image.svg",
-            "Accel" : "Shift+I",
-            "MenuText": "Image",
-            "ToolTip": "Insert a svg image."
-            }
+        return {"Pixmap" : ":/icons/image.svg",
+                "Accel" : "Shift+I",
+                "MenuText": "Image", 
+                "ToolTip": "Insert a svg image."}
 
 FreeCADGui.addCommand("Dimensioning_Image", ImageCommand())

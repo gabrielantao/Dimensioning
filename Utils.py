@@ -93,9 +93,14 @@ def mmtopx(value):
     return value * DPI / 25.4 # 1 in -> 25.4 mm 
 
 def mmtopt(value):
-    """Convert dimension in millimiters in pt (font point)"""
+    """Convert dimension in millimiters to pt (font point)"""
     factor = 72.0 # 72 pt -> 25.4mm
     return value * factor / 25.4
+
+def pttomm(value):
+    """Convert dimension in pt (font point) to millimiters"""
+    factor = 72.0
+    return value * 25.4 / factor
 
 def getGraphicsView():
     """Get reference to PageGraphicsView if active and None if not.

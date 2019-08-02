@@ -248,11 +248,9 @@ class PageCommand:
        # return fpo
 
     def GetResources(self):
-        return {
-            "Pixmap" : ":/icons/new_page.svg",
-            "Accel" : "Shift+N",
-            "MenuText": "NewPage",
-            "ToolTip": "Open a new drawing page."
-            }
+        return {"Pixmap" : ":/icons/new_page.svg",
+                "Accel" : "Shift+N",
+                "MenuText": "NewPage",
+                "ToolTip": "Open a new drawing page."}
 
 FreeCADGui.addCommand("Dimensioning_Page", PageCommand())
