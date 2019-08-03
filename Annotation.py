@@ -36,11 +36,6 @@ from GraphicItem import Arrow, PointCatcher
 # () implement text horizontal alignment 
 # () implement functionality to delete arrows (delete button)
 # () implement "save as default" functionality
-# () criar feature e view 
-# () rearrumar as funcoes fontchanged e textchanged, passar elas para a classe do anotationitem 
-# () colocar update somente nas funcoes do proprio annotationitem
-# () reescrever os metodos de set para copiar a fonte e rearrumar somente a variavel em questao 
-
 
 class AnnotationTask:
     """Create and handle annotation task dialog"""
@@ -121,7 +116,7 @@ class AnnotationTask:
                 self.annotation_item.update()
                 self.disconnectSlots()
                 self.changeCursor(QtCore.Qt.PointingHandCursor)
-                # create a feature and view
+                # Create a feature and view
                 annotation = FreeCAD.ActiveDocument.addObject("App::FeaturePython", 
                                                               "Annotation")
                 Annotation(annotation)
@@ -143,14 +138,8 @@ class AnnotationTask:
         colorRGBA = map(int, self.form.font_color_lineEdit.text().split(","))
         color = QtGui.QColor(*colorRGBA)
         self.annotation_item.setFontColor(color)
-    
 
-    def fontChanged(self, font):
-        """Set new font when it has changed."""
-        size = self.form.font_size.value() 
-        self.annotation_item.setFont(font)
-        self.annotation_item.setFontSize(size) #ensure same size
-        
+    # NOTE: PySide don't have a better QPlainTextEdit signal to do this
     def textChanged(self):
         """Set new text when it has changed."""
         text = self.form.text_widget.toPlainText()
@@ -167,7 +156,7 @@ class AnnotationTask:
     ## METHODS ##
     def connectSlots(self):
         """Connect all slot functions to dialog widgets"""
-        self.form.font_family.currentFontChanged.connect(self.fontChanged)
+        self.form.font_family.currentFontChanged.connect(self.annotation_item.setFontFamily)
         self.form.font_size.valueChanged.connect(self.annotation_item.setFontSize)
         self.form.text_widget.textChanged.connect(self.textChanged)
         self.dialog.currentColorChanged.connect(self.annotation_item.setFontColor)
@@ -182,7 +171,7 @@ class AnnotationTask:
     
     def disconnectSlots(self):
         """Disconnect all slot functions to dialog widgets"""
-        self.form.font_family.currentFontChanged.disconnect(self.fontChanged)
+        self.form.font_family.currentFontChanged.disconnect(self.annotation_item.setFontFamily)
         self.form.font_size.valueChanged.disconnect(self.annotation_item.setFontSize)
         self.form.text_widget.textChanged.disconnect(self.textChanged)
         self.dialog.currentColorChanged.disconnect(self.annotation_item.setFontColor)
@@ -235,12 +224,12 @@ class AnnotationTask:
         
     def configLeaderLine(self, index=0):
         """Configure leader line."""
-        type_ = self.form.leader_type.currentText()
+        kind = self.form.leader_type.currentText()
         side = self.form.leader_side.currentText()
         halign = self.form.horizontal_align.currentText()
         valign = self.form.leader_valign.currentText()
         head = self.form.leader_head.currentText()
-        self.annotation_item.configAnnotation(type_=type_, 
+        self.annotation_item.configAnnotation(kind=kind, 
                                               side=side, halign=halign,
                                               valign=valign, head=head)
 
@@ -253,7 +242,7 @@ class AnnotationTask:
         self.dialog.colorSelected.connect(self.colorDialogAccepted)
         self.form.font_color_button.clicked.connect(self.dialog.show)
     
-    # TODO: In future, change this for a button to a character map.
+    # TODO: In future, change this for a button to a character map dialog.
     # https://doc.qt.io/qt-5/qtwidgets-widgets-charactermap-example.html    
     def createSymbolButton(self):
         """Create a symbol toolbutton menu"""
@@ -317,12 +306,9 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
     
     def configAnnotation(self, **kwargs):
         """Configure some annotation properties. These are used to paint lines"""
-        self.config["type"] = kwargs.get("type_")
-        self.config["side"] = kwargs.get("side")
-        self.config["halign"] = kwargs.get("halign")
-        self.config["valign"] = kwargs.get("valign")
-        self.config["head"] = kwargs.get("head")
-        self.update()
+        for prop in ["kind", "side", "halign", "valign", "head"]:
+            if prop in kwargs:
+                self.config[prop] = kwargs[prop]
         for arrow in self.arrows:
             self.setPivot(arrow)
             arrow.setHead(self.config["head"])
@@ -349,38 +335,38 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         rect = self.boundingRect()
         # TODO: Use dict instead of all these if's?
         if self.config["side"] == "Left":
-            if self.config["type"] == "Straight Leader":
+            if self.config["kind"] == "Straight Leader":
                 if self.config["valign"] == "Top":
                     pivot = rect.topLeft() + QtCore.QPointF(12, 6)
                 elif self.config["valign"] == "Center":
                     pivot = QtCore.QPointF(rect.left()+12, rect.center().y())
                 elif self.config["valign"] == "Bottom":
                     pivot = rect.bottomLeft() + QtCore.QPointF(12, -6)
-            elif self.config["type"]  == "End Bent Leader":
+            elif self.config["kind"]  == "End Bent Leader":
                 if self.config["valign"] == "Top":
                     pivot = rect.topLeft() + QtCore.QPointF(2, 6)
                 elif self.config["valign"] == "Center":
                     pivot = QtCore.QPointF(rect.left()+2, rect.center().y())
                 elif self.config["valign"] == "Bottom":
                     pivot = rect.bottomLeft() + QtCore.QPointF(2, -6)
-            elif self.config["type"]  == "Bent Leader": 
+            elif self.config["kind"]  == "Bent Leader": 
                 pivot = QtCore.QPointF(rect.left()+12, rect.bottom()-6)
         elif self.config["side"] == "Right":
-            if self.config["type"] == "Straight Leader":
+            if self.config["kind"] == "Straight Leader":
                 if self.config["valign"] == "Top":
                     pivot = rect.topRight() + QtCore.QPointF(-12, 6)
                 elif self.config["valign"] == "Center":
                     pivot = QtCore.QPointF(rect.right()-12, rect.center().y())
                 elif self.config["valign"] == "Bottom":
                     pivot = rect.bottomRight() + QtCore.QPointF(-12, -6)
-            elif self.config["type"]  == "End Bent Leader":
+            elif self.config["kind"]  == "End Bent Leader":
                 if self.config["valign"] == "Top":
                     pivot = rect.topRight() + QtCore.QPointF(-2, 6)
                 elif self.config["valign"] == "Center":
                     pivot = QtCore.QPointF(rect.right()-2, rect.center().y())
                 elif self.config["valign"] == "Bottom":
                     pivot = rect.bottomRight() + QtCore.QPointF(-2, -6)
-            elif self.config["type"]  == "Bent Leader":
+            elif self.config["kind"]  == "Bent Leader":
                 pivot = QtCore.QPointF(rect.right()-12, rect.bottom()-6)
         return pivot
     
@@ -396,11 +382,11 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         """Get font color rgba (0.0 - 1.0)"""
         color = self.brush().color()
         if type_ == "float":
-            dic = {"r": color.redF(), "g": color.greenF(), 
-                   "b": color.blueF(),"a": color.alphaF()}
+            dic = {"r": color.redF(),  "g": color.greenF(), 
+                   "b": color.blueF(), "a": color.alphaF()}
         elif type_ == "integer":
-            dic = {"r": color.red(), "g": color.green(), 
-                   "b": color.blue(), "a":color.alpha()}
+            dic = {"r": color.red(),  "g": color.green(), 
+                   "b": color.blue(), "a": color.alpha()}
         out = [dic[c] for c in colors]
         if len(out) == 1:
             return out[0]
@@ -419,41 +405,49 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         self.setTransformOriginPoint(pivot)
         tail = self.mapToScene(pivot)
         arrow.setTailPos(tail)
-        self.update()
         arrow.update()
-      
+    
+    def setFont(self, font):
+        """Override setFont(). Reset pivots"""
+        super(AnnotationItem, self).setFont(font)
+        for arrow in self.arrows:
+            self.setPivot(arrow)
+    
+    def setText(self, text):
+        super(AnnotationItem, self).setText(text)
+        for arrow in self.arrows:
+            self.setPivot(arrow)
+        
+    def setFontFamily(self, font):
+        """Set family name."""
+        actual_font = self.font()
+        actual_font.setFamily(font.family())
+        self.setFont(actual_font)
+    
     def setFontByName(self, name):
-        """Set font by family name"""
+        """Set font by family name. Convinience method."""
         font = self.font()
         font.setFamily(name)
         self.setFont(font)
-        for arrow in self.arrows:
-            self.setPivot(arrow)
-        self.update()
     
     def setFontSize(self, size):
         """Set font size in millimeter. It converts mm in pt."""
         font = self.font()
         font.setPointSizeF(mmtopt(size))
         self.setFont(font)
-        for arrow in self.arrows:
-            self.setPivot(arrow)
-        self.update()
         
     def setFontColor(self, color):
-        """Set font color"""
+        """Set font color."""
         brush = QtGui.QBrush()
         brush.setStyle(QtCore.Qt.SolidPattern)
         brush.setColor(color)
         self.setBrush(brush)
-        self.update()
         
     def setLinePen(self, color, width=0.5):
         """Set line to draw shoulder line."""
         self.pen = QtGui.QPen(color)
         self.pen.setCapStyle(QtCore.Qt.RoundCap)
         self.pen.setWidthF(mmtopt(0.5))
-        self.update()
     
     def setVisible(self, visible):
         """Set visibility to annotation and its arrows."""
@@ -513,10 +507,10 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         # Draw shoulder line
         painter.setPen(self.pen)
         if len(self.arrows) > 0:
-            if self.config["type"] == "Bent Leader":
+            if self.config["kind"] == "Bent Leader":
                 painter.drawLine(rect.left()+12, rect.bottom()-6,
                                  rect.right()-11.8, rect.bottom()-6)
-            elif self.config["type"] == "End Bent Leader":
+            elif self.config["kind"] == "End Bent Leader":
                 if self.config["valign"] == "Top":
                     y = rect.top() + 6
                 elif self.config["valign"] == "Center":
@@ -535,6 +529,7 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
 class Annotation:
     """Feature for a text annotation in draw"""
     def __init__(self, obj):
+        # Font
         obj.addProperty("App::PropertyFont", "FontFamily", 
                         "Font", "Font family")
         obj.addProperty("App::PropertyLength", "FontSize", 
@@ -543,17 +538,27 @@ class Annotation:
                         "Font", "Font color")
         obj.addProperty("App::PropertyPercent", "Opacity", 
                         "Font", "Font opacity")
+        # Content
         obj.addProperty("App::PropertyStringList", "Text",
                         "Content", "Annotation text")
-#        obj.addProperty("App::PropertyEnumeration", "HorizontalAlign",
-#                        "Content", "Horizontal alignment").HorizontalAlign = []
-        obj.addProperty("App::PropertyEnumeration", 
-                        "VerticalAlign",
-                        "Content", 
-                        "Vertical alignment").VerticalAlign = ["Top", "Center", "Bottom"]
+        obj.addProperty("App::PropertyEnumeration", "HorizontalAlign", 
+                        "Content", "Horizontal alignment")
+        obj.HorizontalAlign = ["Left", "Center", "Right", "Justify"]
+        obj.addProperty("App::PropertyEnumeration", "VerticalAlign", 
+                        "Content", "Vertical alignment")
+        obj.VerticalAlign = ["Top", "Center", "Bottom"]
         obj.addProperty("App::PropertyAngle", "Orientation",
                         "Content", "Text Orientation")
-   
+        # Leader Lines
+        obj.addProperty("App::PropertyEnumeration", "LeaderType", 
+                        "LeaderLine", "Leader line type")
+        obj.LeaderType = ["Straight Leader", "Bent Leader", "End Bent Leader"]
+        obj.addProperty("App::PropertyEnumeration", "Side", 
+                        "LeaderLine", "Leader line side")
+        obj.Side = ["Left", "Right"]
+        obj.addProperty("App::PropertyEnumeration", "Head", "LeaderLine", 
+                        "Leader line head")
+        obj.Head = ["Filled Arrow", "Open Arrow", "Dot", "None"]
         obj.Proxy = self
 
     def onChanged(self, fp, prop):
@@ -582,7 +587,13 @@ class AnnotationView:
         feature.FontColor = self.annotation.getFontColor("rgb")
         feature.Opacity = int(alpha * 100) #percent
         feature.Text = self.annotation.getText()
+        feature.HorizontalAlign = self.annotation.config["halign"]
+        feature.VerticalAlign = self.annotation.config["valign"]
         feature.Orientation = self.annotation.rotation()
+        feature.LeaderType = self.annotation.config["kind"]
+        feature.Side = self.annotation.config["side"]
+        feature.Head = self.annotation.config["head"]
+        
     
     def onChanged(self, vp, prop):
         """Called when AnnotationView property changes"""
@@ -595,9 +606,6 @@ class AnnotationView:
         if prop == "FontFamily":
             family = fp.getPropertyByName("FontFamily")
             self.annotation.setFontByName(family)
-#            font = self.annotation.font()
-#            font.setFamily(family)
-#            self.annotation.setFont(font)
         elif prop == "FontSize":
             size = fp.getPropertyByName("FontSize")
             self.annotation.setFontSize(size)
@@ -609,10 +617,34 @@ class AnnotationView:
             self.annotation.setFontColor(qcolor)
         elif prop == "Text":
             text = fp.getPropertyByName("Text")
-            self.annotation.setText("\n".join(text))
+            text = "\n".join(text)
+            if text.strip() == "":
+                self.annotation.setText("Note")
+                fp.Text = ["Note"]
+                QtGui.QMessageBox.warning(FreeCADGui.getMainWindow(), 
+                                          "Dimensioning Workbench",
+                                          "Text should not be empty.")
+            else:
+                self.annotation.setText(text)
+        elif prop == "HorizontalAlign":
+            horizontal_align = fp.getPropertyByName("HorizontalAlign")
+            self.annotation.configAnnotation(halign=horizontal_align)
+        elif prop == "VerticalAlign":
+            vertical_align = fp.getPropertyByName("VerticalAlign")
+            self.annotation.configAnnotation(valign=vertical_align)
         elif prop == "Orientation":
             orientation = fp.getPropertyByName("Orientation")
             self.annotation.setRotation(orientation)
+        elif prop == "LeaderType":
+            leader_type = fp.getPropertyByName("LeaderType")
+            self.annotation.configAnnotation(kind=leader_type)
+        elif prop == "Side":
+            side = fp.getPropertyByName("Side")
+            self.annotation.configAnnotation(side=side)
+        elif prop == "Head":
+            head = fp.getPropertyByName("Head")
+            self.annotation.configAnnotation(head=head)
+            
         
             
     def getIcon(self):
