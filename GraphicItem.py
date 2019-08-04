@@ -127,6 +127,8 @@ class PointCatcher(QtGui.QGraphicsRectItem):
         self.setPos(arrow.getHeadPos()+QtCore.QPointF(-3, -3))
         self.setRect(0,0,10,10)
         self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
+        self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
+#        self.setSelected(True)
     
     def mouseMoveEvent(self, event):
         point = self.mapToScene(self.rect().center())
@@ -142,7 +144,10 @@ class PointCatcher(QtGui.QGraphicsRectItem):
         pos = self.arrow.getHeadPos()
         item_pos = self.mapFromScene(pos)
         pen = QtGui.QPen()
-        pen.setColor(QtCore.Qt.darkGray)
+        if self.isSelected():
+            pen.setColor(QtCore.Qt.magenta)
+        else:
+            pen.setColor(QtCore.Qt.darkGray)
         pen.setJoinStyle(QtCore.Qt.RoundJoin)
         pen.setWidthF(2)
         painter.setPen(pen)

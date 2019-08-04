@@ -69,6 +69,7 @@
 		<file>ui/preferences_dimensionline.ui</file>
 		<file>ui/PrefsTemplate.ui</file>
 		<file>ui/preferences_line.ui</file>
+		<file>ui/titleblock_task.ui</file>
 		<file>ui/image_task.ui</file>
 		<file>ui/annotation_task.ui</file>
 		<file>ui/preferences_general.ui</file>

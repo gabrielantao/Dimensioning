@@ -34,9 +34,25 @@ class PageScene(QtGui.QGraphicsScene):
     """This class handles page graphics scene"""
     mousePressSignal = QtCore.Signal(QtGui.QGraphicsSceneMouseEvent)
     keyPressSignal = QtCore.Signal(QtGui.QGraphicsSceneMouseEvent)
-    def __init__(self):
+    def __init__(self, template):
         super(PageScene, self).__init__()
-        # TODO: colocar aqui a configuracao da cena?
+        brush = QtGui.QBrush(QtGui.QColor(100, 100, 100))
+        self.setBackgroundBrush(brush)
+        self.clear()
+        # Create drawing paper 
+        self.m_svgItem = QtSvg.QGraphicsSvgItem(template)
+        self.m_svgItem.setFlags(QtGui.QGraphicsItem.ItemClipsToShape)
+        self.m_svgItem.setCacheMode(QtGui.QGraphicsItem.NoCache)
+        self.m_svgItem.setZValue(0)
+        # Create paper background 
+        rect = self.m_svgItem.boundingRect()
+        self.m_backgroundItem = QtGui.QGraphicsRectItem(rect)
+        self.m_backgroundItem.setBrush(QtGui.QColor(255, 255, 255))
+        self.m_backgroundItem.setPen(QtCore.Qt.NoPen)
+        self.m_backgroundItem.setZValue(-1)
+        # Add items
+        self.addItem(self.m_backgroundItem)
+        self.addItem(self.m_svgItem)
         
     def mousePressEvent(self, event):
         """Send mouse press event to command handlers"""
@@ -52,36 +68,11 @@ class PageScene(QtGui.QGraphicsScene):
 class PageGraphicsView(QtGui.QGraphicsView):
     """This class handles page graphics view"""
     def __init__(self, template="/home/gabrielantao/.FreeCAD/Mod/Dimensioning/Resources/templates/A4_Landscape.svg"):
-        QtGui.QGraphicsView.__init__(self)
-        self.setScene(PageScene())
-        # TODO: Inserir o icone da pagina aqui 
-#        import Dimensioning_rc
-#        self.setWindowIcon(QtGui.QIcon(":/icons/page.svg"))
-        #TODO: a pagina deve ser so deslocada com as setas do teclado,
-        #      com scroolbar ou com atalho CTRL (aparece maozinha) e clique do mouse
-        #      reservar a mao para deslocar as views da pagina 
+        super(PageGraphicsView, self).__init__()
+        self.setScene(PageScene(template))
         self.setTransformationAnchor(QtGui.QGraphicsView.AnchorUnderMouse)
-#        self.setDragMode(QtGui.QGraphicsView.ScrollHandDrag)
         self.setRenderHint(QtGui.QPainter.Antialiasing)
-        brush = QtGui.QBrush(QtGui.QColor(100, 100, 100))
-        self.setBackgroundBrush(brush)
-        scene = self.scene()
-        scene.clear()
         self.resetTransform()
-        # Create drawing paper 
-        self.m_svgItem = QtSvg.QGraphicsSvgItem(template)
-        self.m_svgItem.setFlags(QtGui.QGraphicsItem.ItemClipsToShape)
-        self.m_svgItem.setCacheMode(QtGui.QGraphicsItem.NoCache)
-        self.m_svgItem.setZValue(0)
-        # Create paper background 
-        rect = self.m_svgItem.boundingRect()
-        self.m_backgroundItem = QtGui.QGraphicsRectItem(rect)
-        self.m_backgroundItem.setBrush(QtGui.QColor(255, 255, 255))
-        self.m_backgroundItem.setPen(QtCore.Qt.NoPen)
-        self.m_backgroundItem.setVisible(True) #NOTA: precisa disso?
-        self.m_backgroundItem.setZValue(-1)
-        scene.addItem(self.m_backgroundItem)
-        scene.addItem(self.m_svgItem)
         # Attach widget to FreeCAD MDI
         mw =  FreeCADGui.getMainWindow()
         mdi = mw.centralWidget()
@@ -93,7 +84,9 @@ class PageGraphicsView(QtGui.QGraphicsView):
         subwindow = self.parentWidget()
         subwindow.aboutToActivate.connect(setActiveDocument)
         self.show() #https://forum.freecadweb.org/viewtopic.php?t=9892
-        self.fitInView(scene.sceneRect(), QtCore.Qt.KeepAspectRatio)
+        self.fitInView(self.scene().sceneRect(), QtCore.Qt.KeepAspectRatio)
+        # TODO: In future, change this icon. 
+        subwindow.setWindowIcon(QtGui.QIcon(":/icons/page.svg"))
 
     # NOTE: This could be used to build a name just like Drawing WB does...
     #       "Doc_name : Page". However, new workbenchs like Spreadsheet

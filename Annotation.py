@@ -34,17 +34,14 @@ from Utils import getGraphicsView, mmtopt, pttomm, setButtonColor
 from GraphicItem import Arrow, PointCatcher
 ### TODO LIST
 # () implement text horizontal alignment 
-# () implement functionality to delete arrows (delete button)
 # () implement "save as default" functionality
-# () implement editing functionality
+
 
 class AnnotationTask:
     """Create and handle annotation task dialog"""
     # https://mandeep7.wordpress.com/2017/05/07/using-qt-ui-files-with-pyside-in-freecad/
-    INSERT_MODE, EDIT_MODE = range(2)
-    def __init__(self, graphics_view):
-        self.mode = self.INSERT_MODE
-        self.annotation = None
+    INSERT_MODE, STAGE_MODE, EDIT_MODE = range(3)
+    def __init__(self, graphics_view, view_provider=None):
         self.form = FreeCADGui.PySideUic.loadUi(":/ui/annotation_task.ui")
         self.form.font_family.setCurrentFont(QtGui.QFont("ISO 3098"))
         setButtonColor(self.form.font_color_button, QtGui.QColor(0, 0, 0, 255))
@@ -54,10 +51,48 @@ class AnnotationTask:
 #        self.setDefaultConfig()
         # Handle scene objects
         self.graphics_view = graphics_view
-        self.changeCursor(QtCore.Qt.PointingHandCursor)
         self.scene = self.graphics_view.scene()
         self.scene.mousePressSignal.connect(self.mousePress)
         self.scene.keyPressSignal.connect(self.keyPress)
+#        self.view_provider = view_provider
+        if view_provider:
+            self.mode = self.EDIT_MODE
+#            self.feature = view_provider.Object
+            self.view_provider = view_provider
+            self.annotation = view_provider.Proxy.annotation
+            # Populate the task dialog
+            self.form.font_family.setCurrentFont(self.annotation.font())
+            self.form.font_size.setValue(self.annotation.getFontSize())
+            color = self.annotation.getFontColor(type_="integer")
+            self.form.font_color_lineEdit.clear()
+            self.form.font_color_lineEdit.insert(str(color).strip("()"))
+            setButtonColor(self.form.font_color_button, QtGui.QColor(*color))
+            self.form.text_widget.setPlainText(self.annotation.text())
+            config = self.annotation.getConfig("halign")
+            index = self.form.horizontal_align.findText(config)
+            self.form.horizontal_align.setCurrentIndex(index)
+            self.form.orientation_angle.setValue(self.annotation.rotation())
+            config = self.annotation.getConfig("style")
+            index = self.form.leader_style.findText(config)
+            self.form.leader_style.setCurrentIndex(index)
+            config = self.annotation.getConfig("side")
+            index = self.form.leader_side.findText(config)
+            self.form.leader_side.setCurrentIndex(index)
+            config = self.annotation.getConfig("valign")
+            index = self.form.leader_valign.findText(config)
+            self.form.leader_valign.setCurrentIndex(index)
+            config = self.annotation.getConfig("head")
+            index = self.form.leader_head.findText(config)
+            self.form.leader_head.setCurrentIndex(index)
+            # 
+            self.annotation.setEditMode(True) 
+            self.connectSlots()
+            for catcher in self.annotation.point_catchers:
+                    self.scene.addItem(catcher)
+        else:
+            self.annotation = None
+            self.mode = self.INSERT_MODE
+            self.changeCursor(QtCore.Qt.PointingHandCursor)
     
     ## DIALOG METHODS ##
     def isAllowedAlterSelection(self):
@@ -78,21 +113,28 @@ class AnnotationTask:
         """Called when close dialog button is clicked. Exit annotation command."""
         self.scene.mousePressSignal.disconnect(self.mousePress)
         self.scene.keyPressSignal.disconnect(self.keyPress)
-        self.changeCursor(QtCore.Qt.ArrowCursor)
-        if self.mode == self.EDIT_MODE:
+        if self.mode == self.STAGE_MODE:
             self.scene.removeItem(self.annotation)
             for arrow in self.annotation.arrows:
                 self.scene.removeItem(arrow)
             for catcher in self.annotation.point_catchers:
                 self.scene.removeItem(catcher)
-   
+        if self.mode == self.EDIT_MODE:
+            self.disconnectSlots()
+            self.annotation.setEditMode(False)
+            for catcher in self.annotation.point_catchers:
+                    self.scene.removeItem(catcher)
+            self.annotation.update()
+            self.view_provider.Proxy.configFeature(self.view_provider)
+        self.changeCursor(QtCore.Qt.ArrowCursor)
+        
     ## SLOTS ##
     def mousePress(self, event):
         """Handle the mouse press event inside scene"""
         # FIXME: When click over another item the cursor doesn't change to arrowcursor
         pos = event.scenePos()
         if self.mode == self.INSERT_MODE:
-            self.mode = self.EDIT_MODE
+            self.mode = self.STAGE_MODE
             self.annotation = AnnotationItem()
             self.connectSlots()
             self.configFont()
@@ -108,7 +150,7 @@ class AnnotationTask:
                 QtGui.QMessageBox.warning(self.form, "Dimensioning Workbench",
                                           "Text should not be empty.")
                 return
-            if self.mode == self.EDIT_MODE:
+            if self.mode == self.STAGE_MODE:
                 self.mode = self.INSERT_MODE
                 self.annotation.setEditMode(False) 
                 for catcher in self.annotation.point_catchers:
@@ -126,6 +168,11 @@ class AnnotationTask:
                 self.annotation = None
                 FreeCAD.ActiveDocument.recompute()
                 FreeCAD.Console.PrintMessage("Annotation created.\n")
+        if event.key() == QtCore.Qt.Key_Delete:
+            for item in self.annotation.removeArrow():
+                self.scene.removeItem(item)
+#                self.annotation.update()
+                
         # TODO: implement close taskdialog with Escape key
         elif event.key() == QtCore.Qt.Key_Escape: #close
             pass 
@@ -166,7 +213,7 @@ class AnnotationTask:
         self.dialog.rejected.connect(self.colorDialogRejected)
         self.form.orientation_angle.valueChanged.connect(self.annotation.setRotation)
         self.form.leader_add.clicked.connect(self.createArrow)
-        self.form.leader_type.currentIndexChanged.connect(self.configLeaderLine)
+        self.form.leader_style.currentIndexChanged.connect(self.configLeaderLine)
         self.form.leader_side.currentIndexChanged.connect(self.configLeaderLine)
         self.form.horizontal_align.currentIndexChanged.connect(self.configLeaderLine)
         self.form.leader_valign.currentIndexChanged.connect(self.configLeaderLine)
@@ -181,7 +228,7 @@ class AnnotationTask:
         self.dialog.rejected.disconnect(self.colorDialogRejected)
         self.form.orientation_angle.valueChanged.disconnect(self.annotation.setRotation)
         self.form.leader_add.clicked.disconnect(self.createArrow)
-        self.form.leader_type.currentIndexChanged.disconnect(self.configLeaderLine)
+        self.form.leader_style.currentIndexChanged.disconnect(self.configLeaderLine)
         self.form.leader_side.currentIndexChanged.disconnect(self.configLeaderLine)
         self.form.horizontal_align.currentIndexChanged.disconnect(self.configLeaderLine)
         self.form.leader_valign.currentIndexChanged.disconnect(self.configLeaderLine)
@@ -227,14 +274,14 @@ class AnnotationTask:
         
     def configLeaderLine(self, index=0):
         """Configure leader line."""
-        kind = self.form.leader_type.currentText()
+        style = self.form.leader_style.currentText()
         side = self.form.leader_side.currentText()
         halign = self.form.horizontal_align.currentText()
         valign = self.form.leader_valign.currentText()
         head = self.form.leader_head.currentText()
-        self.annotation.configAnnotation(kind=kind, 
-                                              side=side, halign=halign,
-                                              valign=valign, head=head)
+        self.annotation.configAnnotation(style=style, 
+                                         side=side, halign=halign,
+                                         valign=valign, head=head)
 
     def createColorDialog(self):
         """Create a new dialog for color."""
@@ -309,7 +356,7 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
     
     def configAnnotation(self, **kwargs):
         """Configure some annotation properties. These are used to paint lines"""
-        for prop in ["kind", "side", "halign", "valign", "head"]:
+        for prop in ["style", "side", "halign", "valign", "head"]:
             if prop in kwargs:
                 self.config[prop] = kwargs[prop]
         for arrow in self.arrows:
@@ -332,44 +379,58 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
             arrow.setHeadPos(arrow.getTailPos()+QtCore.QPointF(-40, -40))
         self.arrows.append(arrow)
         self.point_catchers.append(PointCatcher(arrow))
-   
+    
+    def removeArrow(self):
+        """Remove arrow."""
+        remove_item = []
+        i = 0
+        for i in range(len(self.point_catchers)-1, -1, -1): #iter backwards
+            if self.point_catchers[i].isSelected():
+                remove_item.append(self.point_catchers.pop(i))
+                remove_item.append(self.arrows.pop(i))
+        self.update()
+        return remove_item
+
+    def getConfig(self, config):
+        return self.config[config]
+    
     def getPivot(self):
         """Get pivot point in Annotation coordinate system."""
         rect = self.boundingRect()
         # TODO: Use dict instead of all these if's?
         if self.config["side"] == "Left":
-            if self.config["kind"] == "Straight Leader":
+            if self.config["style"] == "Straight Leader":
                 if self.config["valign"] == "Top":
                     pivot = rect.topLeft() + QtCore.QPointF(12, 6)
                 elif self.config["valign"] == "Center":
                     pivot = QtCore.QPointF(rect.left()+12, rect.center().y())
                 elif self.config["valign"] == "Bottom":
                     pivot = rect.bottomLeft() + QtCore.QPointF(12, -6)
-            elif self.config["kind"]  == "End Bent Leader":
+            elif self.config["style"]  == "End Bent Leader":
                 if self.config["valign"] == "Top":
                     pivot = rect.topLeft() + QtCore.QPointF(2, 6)
                 elif self.config["valign"] == "Center":
                     pivot = QtCore.QPointF(rect.left()+2, rect.center().y())
                 elif self.config["valign"] == "Bottom":
                     pivot = rect.bottomLeft() + QtCore.QPointF(2, -6)
-            elif self.config["kind"]  == "Bent Leader": 
+            elif self.config["style"]  == "Bent Leader": 
                 pivot = QtCore.QPointF(rect.left()+12, rect.bottom()-6)
         elif self.config["side"] == "Right":
-            if self.config["kind"] == "Straight Leader":
+            if self.config["style"] == "Straight Leader":
                 if self.config["valign"] == "Top":
                     pivot = rect.topRight() + QtCore.QPointF(-12, 6)
                 elif self.config["valign"] == "Center":
                     pivot = QtCore.QPointF(rect.right()-12, rect.center().y())
                 elif self.config["valign"] == "Bottom":
                     pivot = rect.bottomRight() + QtCore.QPointF(-12, -6)
-            elif self.config["kind"]  == "End Bent Leader":
+            elif self.config["style"]  == "End Bent Leader":
                 if self.config["valign"] == "Top":
                     pivot = rect.topRight() + QtCore.QPointF(-2, 6)
                 elif self.config["valign"] == "Center":
                     pivot = QtCore.QPointF(rect.right()-2, rect.center().y())
                 elif self.config["valign"] == "Bottom":
                     pivot = rect.bottomRight() + QtCore.QPointF(-2, -6)
-            elif self.config["kind"]  == "Bent Leader":
+            elif self.config["style"]  == "Bent Leader":
                 pivot = QtCore.QPointF(rect.right()-12, rect.bottom()-6)
         return pivot
     
@@ -510,10 +571,10 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         # Draw shoulder line
         painter.setPen(self.pen)
         if len(self.arrows) > 0:
-            if self.config["kind"] == "Bent Leader":
+            if self.config["style"] == "Bent Leader":
                 painter.drawLine(rect.left()+12, rect.bottom()-6,
                                  rect.right()-11.8, rect.bottom()-6)
-            elif self.config["kind"] == "End Bent Leader":
+            elif self.config["style"] == "End Bent Leader":
                 if self.config["valign"] == "Top":
                     y = rect.top() + 6
                 elif self.config["valign"] == "Center":
@@ -553,9 +614,9 @@ class Annotation:
         obj.addProperty("App::PropertyAngle", "Orientation",
                         "Content", "Text Orientation")
         # Leader Lines
-        obj.addProperty("App::PropertyEnumeration", "LeaderType", 
-                        "LeaderLine", "Leader line type")
-        obj.LeaderType = ["Straight Leader", "Bent Leader", "End Bent Leader"]
+        obj.addProperty("App::PropertyEnumeration", "LeaderStyle", 
+                        "LeaderLine", "Leader line style")
+        obj.LeaderStyle = ["Straight Leader", "Bent Leader", "End Bent Leader"]
         obj.addProperty("App::PropertyEnumeration", "Side", 
                         "LeaderLine", "Leader line side")
         obj.Side = ["Left", "Right"]
@@ -576,26 +637,9 @@ class AnnotationView:
     def __init__(self, vobj, graphics_item):
         self.annotation = graphics_item
         vobj.Proxy = self
-    
-    def setEdit(self, mode):
-        #https://www.freecadweb.org/wiki/Std_Edit
-        """Enter in task dialog to edit annotation."""
-        # TODO: implement this to edit a annotation
-        return False
-    
-    def doubleClicked(self, vp):
-        """Called when double click in object in treeview."""
-        page = vp.Object.getParentGroup() #feature
-        page_view = page.ViewObject.Proxy
-        page_view.graphics_view.setActive()
-        return True
-    
-    def attach(self, vp):
-        # NOTE: it must be done to show coulored icon in tree view 
-        # https://forum.freecadweb.org/viewtopic.php?t=12139
-        from pivy import coin
-        vp.addDisplayMode(coin.SoGroup(), "Standard")
-        # Set feature properties
+
+    def configFeature(self, vp):
+        """Configure feature properties."""
         feature = vp.Object
         alpha = self.annotation.getFontColor("a")
         feature.FontFamily = self.annotation.getFontFamily()
@@ -606,9 +650,31 @@ class AnnotationView:
         feature.HorizontalAlign = self.annotation.config["halign"]
         feature.VerticalAlign = self.annotation.config["valign"]
         feature.Orientation = self.annotation.rotation()
-        feature.LeaderType = self.annotation.config["kind"]
+        feature.LeaderStyle = self.annotation.config["style"]
         feature.Side = self.annotation.config["side"]
         feature.Head = self.annotation.config["head"]
+        
+#    def setEdit(self, mode):
+#        #https://www.freecadweb.org/wiki/Std_Edit
+#        """Enter in task dialog to edit annotation."""
+#        FreeCADGui.Control.showDialog(AnnotationTask(getGraphicsView()))
+#        return True
+    
+    def doubleClicked(self, vp):
+        """Called when double click in object in treeview."""
+        page = vp.Object.getParentGroup() #feature
+        page_view = page.ViewObject.Proxy
+        page_view.graphics_view.setActive()
+        task_dialog = AnnotationTask(getGraphicsView(), vp)
+        FreeCADGui.Control.showDialog(task_dialog)
+        return True
+    
+    def attach(self, vp):
+        # NOTE: it must be done to show coulored icon in tree view 
+        # https://forum.freecadweb.org/viewtopic.php?t=12139
+        from pivy import coin
+        vp.addDisplayMode(coin.SoGroup(), "Standard")
+        self.configFeature(vp)
     
     def onChanged(self, vp, prop):
         """Called when AnnotationView property changes"""
@@ -650,15 +716,16 @@ class AnnotationView:
         elif prop == "Orientation":
             orientation = fp.getPropertyByName("Orientation")
             self.annotation.setRotation(orientation)
-        elif prop == "LeaderType":
-            leader_type = fp.getPropertyByName("LeaderType")
-            self.annotation.configAnnotation(kind=leader_type)
+        elif prop == "LeaderStyle":
+            leader_style = fp.getPropertyByName("LeaderStyle")
+            self.annotation.configAnnotation(style=leader_style)
         elif prop == "Side":
-            side = fp.getPropertyByName("Side")
-            self.annotation.configAnnotation(side=side)
+            leader_side = fp.getPropertyByName("Side")
+            self.annotation.configAnnotation(side=leader_side)
         elif prop == "Head":
-            head = fp.getPropertyByName("Head")
-            self.annotation.configAnnotation(head=head)
+            leader_head = fp.getPropertyByName("Head")
+            self.annotation.configAnnotation(head=leader_head)
+            
             
     def getIcon(self):
         return ":/icons/annotation.svg"

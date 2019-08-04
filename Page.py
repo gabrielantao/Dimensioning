@@ -154,6 +154,7 @@ class PageView:
     def attach(self, vp):
         """Create and configure a new QSubWindow in FreeCAD MDIArea"""
         self.showPage()
+
     
     def onChanged(self, vp, prop):
         """Called when PageView property changes"""

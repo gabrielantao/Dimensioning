@@ -286,7 +286,7 @@
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="QComboBox" name="leader_type">
+       <widget class="QComboBox" name="leader_style">
         <property name="iconSize">
          <size>
           <width>24</width>
@@ -325,7 +325,7 @@
       <item row="1" column="0">
        <widget class="QLabel" name="label_8">
         <property name="text">
-         <string>Type</string>
+         <string>Style</string>
         </property>
        </widget>
       </item>
