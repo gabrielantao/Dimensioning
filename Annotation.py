@@ -36,6 +36,7 @@ from GraphicItem import Arrow, PointCatcher
 # () implement text horizontal alignment 
 # () implement functionality to delete arrows (delete button)
 # () implement "save as default" functionality
+# () implement editing functionality
 
 class AnnotationTask:
     """Create and handle annotation task dialog"""
@@ -43,7 +44,7 @@ class AnnotationTask:
     INSERT_MODE, EDIT_MODE = range(2)
     def __init__(self, graphics_view):
         self.mode = self.INSERT_MODE
-        self.annotation_item = None
+        self.annotation = None
         self.form = FreeCADGui.PySideUic.loadUi(":/ui/annotation_task.ui")
         self.form.font_family.setCurrentFont(QtGui.QFont("ISO 3098"))
         setButtonColor(self.form.font_color_button, QtGui.QColor(0, 0, 0, 255))
@@ -79,10 +80,10 @@ class AnnotationTask:
         self.scene.keyPressSignal.disconnect(self.keyPress)
         self.changeCursor(QtCore.Qt.ArrowCursor)
         if self.mode == self.EDIT_MODE:
-            self.scene.removeItem(self.annotation_item)
-            for arrow in self.annotation_item.arrows:
+            self.scene.removeItem(self.annotation)
+            for arrow in self.annotation.arrows:
                 self.scene.removeItem(arrow)
-            for catcher in self.annotation_item.point_catchers:
+            for catcher in self.annotation.point_catchers:
                 self.scene.removeItem(catcher)
    
     ## SLOTS ##
@@ -92,12 +93,12 @@ class AnnotationTask:
         pos = event.scenePos()
         if self.mode == self.INSERT_MODE:
             self.mode = self.EDIT_MODE
-            self.annotation_item = AnnotationItem()
+            self.annotation = AnnotationItem()
             self.connectSlots()
             self.configFont()
             self.configLeaderLine()
-            self.annotation_item.setPos(pos)
-            self.scene.addItem(self.annotation_item)
+            self.annotation.setPos(pos)
+            self.scene.addItem(self.annotation)
         self.changeCursor(QtCore.Qt.ArrowCursor)
      
     def keyPress(self, event):
@@ -109,20 +110,22 @@ class AnnotationTask:
                 return
             if self.mode == self.EDIT_MODE:
                 self.mode = self.INSERT_MODE
-                FreeCAD.Console.PrintMessage("Annotation created.\n")
-                self.annotation_item.setEditMode(False) 
-                for catcher in self.annotation_item.point_catchers:
+                self.annotation.setEditMode(False) 
+                for catcher in self.annotation.point_catchers:
                     self.scene.removeItem(catcher)
-                self.annotation_item.update()
+                self.annotation.update()
                 self.disconnectSlots()
                 self.changeCursor(QtCore.Qt.PointingHandCursor)
                 # Create a feature and view
-                annotation = FreeCAD.ActiveDocument.addObject("App::FeaturePython", 
-                                                              "Annotation")
+                document = self.graphics_view.getDocument()
+                annotation = document.addObject("App::FeaturePython", "Annotation")
                 Annotation(annotation)
-                AnnotationView(annotation.ViewObject, self.annotation_item)
-                self.annotation_item = None
+                AnnotationView(annotation.ViewObject, self.annotation)
+                page = self.graphics_view.getPage()
+                page.addObject(annotation)
+                self.annotation = None
                 FreeCAD.ActiveDocument.recompute()
+                FreeCAD.Console.PrintMessage("Annotation created.\n")
         # TODO: implement close taskdialog with Escape key
         elif event.key() == QtCore.Qt.Key_Escape: #close
             pass 
@@ -137,31 +140,31 @@ class AnnotationTask:
         """Slot to return color to color before open color dialog."""
         colorRGBA = map(int, self.form.font_color_lineEdit.text().split(","))
         color = QtGui.QColor(*colorRGBA)
-        self.annotation_item.setFontColor(color)
+        self.annotation.setFontColor(color)
 
     # NOTE: PySide don't have a better QPlainTextEdit signal to do this
     def textChanged(self):
         """Set new text when it has changed."""
         text = self.form.text_widget.toPlainText()
-        self.annotation_item.setText(text)
-        for arrow in self.annotation_item.arrows:
-            self.annotation_item.setPivot(arrow)
+        self.annotation.setText(text)
+        for arrow in self.annotation.arrows:
+            self.annotation.setPivot(arrow)
     
     def createArrow(self):
         """Add arrow to scene."""
-        self.annotation_item.addArrow()
-        self.scene.addItem(self.annotation_item.arrows[-1])
-        self.scene.addItem(self.annotation_item.point_catchers[-1])
+        self.annotation.addArrow()
+        self.scene.addItem(self.annotation.arrows[-1])
+        self.scene.addItem(self.annotation.point_catchers[-1])
         
     ## METHODS ##
     def connectSlots(self):
         """Connect all slot functions to dialog widgets"""
-        self.form.font_family.currentFontChanged.connect(self.annotation_item.setFontFamily)
-        self.form.font_size.valueChanged.connect(self.annotation_item.setFontSize)
+        self.form.font_family.currentFontChanged.connect(self.annotation.setFontFamily)
+        self.form.font_size.valueChanged.connect(self.annotation.setFontSize)
         self.form.text_widget.textChanged.connect(self.textChanged)
-        self.dialog.currentColorChanged.connect(self.annotation_item.setFontColor)
+        self.dialog.currentColorChanged.connect(self.annotation.setFontColor)
         self.dialog.rejected.connect(self.colorDialogRejected)
-        self.form.orientation_angle.valueChanged.connect(self.annotation_item.setRotation)
+        self.form.orientation_angle.valueChanged.connect(self.annotation.setRotation)
         self.form.leader_add.clicked.connect(self.createArrow)
         self.form.leader_type.currentIndexChanged.connect(self.configLeaderLine)
         self.form.leader_side.currentIndexChanged.connect(self.configLeaderLine)
@@ -171,12 +174,12 @@ class AnnotationTask:
     
     def disconnectSlots(self):
         """Disconnect all slot functions to dialog widgets"""
-        self.form.font_family.currentFontChanged.disconnect(self.annotation_item.setFontFamily)
-        self.form.font_size.valueChanged.disconnect(self.annotation_item.setFontSize)
+        self.form.font_family.currentFontChanged.disconnect(self.annotation.setFontFamily)
+        self.form.font_size.valueChanged.disconnect(self.annotation.setFontSize)
         self.form.text_widget.textChanged.disconnect(self.textChanged)
-        self.dialog.currentColorChanged.disconnect(self.annotation_item.setFontColor)
+        self.dialog.currentColorChanged.disconnect(self.annotation.setFontColor)
         self.dialog.rejected.disconnect(self.colorDialogRejected)
-        self.form.orientation_angle.valueChanged.disconnect(self.annotation_item.setRotation)
+        self.form.orientation_angle.valueChanged.disconnect(self.annotation.setRotation)
         self.form.leader_add.clicked.disconnect(self.createArrow)
         self.form.leader_type.currentIndexChanged.disconnect(self.configLeaderLine)
         self.form.leader_side.currentIndexChanged.disconnect(self.configLeaderLine)
@@ -216,11 +219,11 @@ class AnnotationTask:
         color = QtGui.QColor(*colorRGBA)
         text = self.form.text_widget.toPlainText()
         angle = self.form.orientation_angle.value()
-        self.annotation_item.setFont(font)
-        self.annotation_item.setFontSize(size)
-        self.annotation_item.setFontColor(color)
-        self.annotation_item.setText(text)
-        self.annotation_item.setRotation(angle)
+        self.annotation.setFont(font)
+        self.annotation.setFontSize(size)
+        self.annotation.setFontColor(color)
+        self.annotation.setText(text)
+        self.annotation.setRotation(angle)
         
     def configLeaderLine(self, index=0):
         """Configure leader line."""
@@ -229,7 +232,7 @@ class AnnotationTask:
         halign = self.form.horizontal_align.currentText()
         valign = self.form.leader_valign.currentText()
         head = self.form.leader_head.currentText()
-        self.annotation_item.configAnnotation(kind=kind, 
+        self.annotation.configAnnotation(kind=kind, 
                                               side=side, halign=halign,
                                               valign=valign, head=head)
 
@@ -573,7 +576,20 @@ class AnnotationView:
     def __init__(self, vobj, graphics_item):
         self.annotation = graphics_item
         vobj.Proxy = self
-        
+    
+    def setEdit(self, mode):
+        #https://www.freecadweb.org/wiki/Std_Edit
+        """Enter in task dialog to edit annotation."""
+        # TODO: implement this to edit a annotation
+        return False
+    
+    def doubleClicked(self, vp):
+        """Called when double click in object in treeview."""
+        page = vp.Object.getParentGroup() #feature
+        page_view = page.ViewObject.Proxy
+        page_view.graphics_view.setActive()
+        return True
+    
     def attach(self, vp):
         # NOTE: it must be done to show coulored icon in tree view 
         # https://forum.freecadweb.org/viewtopic.php?t=12139
@@ -593,7 +609,6 @@ class AnnotationView:
         feature.LeaderType = self.annotation.config["kind"]
         feature.Side = self.annotation.config["side"]
         feature.Head = self.annotation.config["head"]
-        
     
     def onChanged(self, vp, prop):
         """Called when AnnotationView property changes"""
@@ -644,8 +659,6 @@ class AnnotationView:
         elif prop == "Head":
             head = fp.getPropertyByName("Head")
             self.annotation.configAnnotation(head=head)
-            
-        
             
     def getIcon(self):
         return ":/icons/annotation.svg"

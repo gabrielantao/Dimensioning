@@ -35,7 +35,7 @@ class ImageTask:
     """Create and handle image task dialog"""
     def __init__(self, graphics_view):
         self.form = FreeCADGui.PySideUic.loadUi(":/ui/image_task.ui")
-        self.svgImage = None
+        self.image = None
         self.createFileDialog()
         # Handle scene objects
         self.graphics_view = graphics_view
@@ -52,17 +52,19 @@ class ImageTask:
         return True
         
     def reject(self):
-        self.scene.removeItem(self.svgImage)
+        self.scene.removeItem(self.image)
         return True #close dialog
         
     def accept(self):
-        if self.svgImage:
-            self.svgImage.setEditMode(False)
-            self.svgImage.update()
-            image = FreeCAD.ActiveDocument.addObject("App::FeaturePython", 
-                                                     "Image")
+        if self.image:
+            self.image.setEditMode(False)
+            self.image.update()
+            document = self.graphics_view.getDocument()
+            image = document.addObject("App::FeaturePython", "Image")
             Image(image)
-            ImageView(image.ViewObject, self.svgImage)
+            ImageView(image.ViewObject, self.image)
+            page = self.graphics_view.getPage()
+            page.addObject(image)
             FreeCAD.ActiveDocument.recompute()
             FreeCAD.Console.PrintMessage("Svg image created.\n")
             return True #close dialog
@@ -77,15 +79,15 @@ class ImageTask:
     ## METHODS ##
     def connectSlots(self):
         """Connect all slot functions to dialog widgets"""
-        self.form.scale.valueChanged.connect(self.svgImage.setScale)
-        self.form.rotation.valueChanged.connect(self.svgImage.setRotation)
-        self.form.opacity.valueChanged.connect(self.svgImage.setOpacity)
+        self.form.scale.valueChanged.connect(self.image.setScale)
+        self.form.rotation.valueChanged.connect(self.image.setRotation)
+        self.form.opacity.valueChanged.connect(self.image.setOpacity)
     
     def disconnectSlots(self):
         """Disconnect all slot functions to dialog widgets"""
-        self.form.scale.valueChanged.disconnect(self.svgImage.setScale)
-        self.form.rotation.valueChanged.disconnect(self.svgImage.setRotation)
-        self.form.opacity.valueChanged.disconnect(self.svgImage.setOpacity)
+        self.form.scale.valueChanged.disconnect(self.image.setScale)
+        self.form.rotation.valueChanged.disconnect(self.image.setRotation)
+        self.form.opacity.valueChanged.disconnect(self.image.setOpacity)
     
     # NOTE: initial path should use QStandardPaths::PicturesLocation
     #       Does it work on all systems (Unix, Windows, OSX) ?
@@ -102,22 +104,22 @@ class ImageTask:
     def createImage(self, filepath):
         """Create and add a svg image."""
         pos = QtCore.QPointF(0, 0)
-        if self.svgImage:
-            pos = self.svgImage.pos()
-            self.scene.removeItem(self.svgImage)
+        if self.image:
+            pos = self.image.pos()
+            self.scene.removeItem(self.image)
             self.disconnectSlots()
-        self.svgImage = ImageItem(filepath)
+        self.image = ImageItem(filepath)
         self.connectSlots()
         scale = self.form.scale.value()
         rotation = self.form.rotation.value()
         opacity = self.form.opacity.value()
-        self.svgImage.setPos(pos)
-        self.svgImage.setScale(scale)
-        self.svgImage.setRotation(rotation)
-        self.svgImage.setOpacity(opacity)
-        center = self.svgImage.boundingRect().center()
-        self.svgImage.setTransformOriginPoint(center)
-        self.scene.addItem(self.svgImage)
+        self.image.setPos(pos)
+        self.image.setScale(scale)
+        self.image.setRotation(rotation)
+        self.image.setOpacity(opacity)
+        center = self.image.boundingRect().center()
+        self.image.setTransformOriginPoint(center)
+        self.scene.addItem(self.image)
         
     
 class ImageItem(QtSvg.QGraphicsSvgItem):
@@ -193,8 +195,13 @@ class ImageView:
         feature.Opacity = self.image.opacity()
         feature.Zvalue = self.image.zValue()
         
-    def doubleClicked(self, vobj): #??? it doesn't work. Why?
-        pass
+    def doubleClicked(self, vp):
+        """Called when double click in object in treeview."""
+        page = vp.Object.getParentGroup() #feature
+        page_view = page.ViewObject.Proxy
+        page_view.graphics_view.setActive()
+        return True
+   
     
     def onChanged(self, vp, prop):
         """Called when ImageView property changes"""
@@ -248,7 +255,6 @@ class ImageCommand:
         if not graphics_view: # page is not active
             return 
         FreeCADGui.Control.showDialog(ImageTask(graphics_view))
-#        FreeCAD.ActiveDocument.recompute()
 
     def GetResources(self):
         return {"Pixmap" : ":/icons/image.svg",

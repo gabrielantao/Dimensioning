@@ -26,16 +26,16 @@
 """
 This module creates a new page for drawing.
 """
-from Utils import getParam
-import FreeCAD, FreeCADGui
 
 from PySide import QtGui
+import FreeCAD, FreeCADGui
+from Utils import getParam
 
 from PageGraphicsView import PageGraphicsView 
+### TODO LIST
+# () implement paper properties 
+# () implement paper preview widget
 
-import GraphicItem
-
-# NOTA: as orthoviews sao grupos de objetos (DocumentObjectGroupPython ?)
 class Page:
     """
     Container for technical pages objects (DocumentObjectGroupPython).
@@ -62,10 +62,6 @@ class Page:
                         "Projection angle").ProjectionAngle = ["first", "tird"] #getParam("ProjAngle", "General") 
         obj.addProperty("App::PropertyString", "TemplateName", "Base",
                         "Name of svg template").TemplateName = "template2.svg"#getParam("TemplateName", "General")
-        obj.addProperty("App::PropertyStringList", "CaptionText", "Base",
-                        "Editable texts list")
-        
-        ##self.views = [] #TODO: adicionar
         # Paper properties (read only)
 #        obj.addProperty("App::PropertyString", "PaperSize", "Page",
 #                        "Paper size code", True)
@@ -81,21 +77,12 @@ class Page:
 #                        "Rect of proj angle x, y, width, height in mm", 0, True) #TODO: AGRUPAR TIPO O PLACEMENT separar em 4 propriedades
         obj.Proxy = self
 #        self.Type = "Page"
-        
-#    def onBeforeChange(self, prop):
-#        #TODO: colocar aqui lidar com um line edit para escala que verifica o formato 10:1 por exemplo
-#        #      verifica se tem os dois pontos
-#        if prop == "scale":
-#            pass
 
     def onChanged(self, fp, prop):
         pass
-        
 
     def execute(self, obj):
         pass
-#        FreeCAD.Console.PrintMessage("Recompute Python Box feature\n")
-        
 
     def hasValidTemplate(self):
         pass
@@ -121,14 +108,14 @@ class Page:
     def requestPaint(self):
         pass
 
-    def onDocumentRestored(self):
-        pass
+#    def onDocumentRestored(self):
+#        pass
 
     def unsetupObject(self):
         pass
 
-    def getNextBalloonIndex(self):
-        pass
+#    def getNextBalloonIndex(self):
+#        pass
 
     def restore(self):
         pass
@@ -138,16 +125,7 @@ class Page:
         pass
 
 class PageView:
-#TODO: fechar janela de MDI de desenho quando fechar o documento
-#TODO: alterar titulo da janela de MDI quando salvar o documento
-    
-#TODO: adicionar backgrond color, frame caption, show frame (no View)
-#TODO: adicionar editable text color, font, size (no View)
-
-#TODO: acidionar thickness e color (no View) 
-#TODO: adionar page caption 
-#TODO: adicionar backgrond color, frame caption, show frame (no View)
-#TODO: adicionar editable text color, font, size (no View)
+    #TODO: close subwindow when document is closing
     def __init__(self, vobj):
         """Set this object to the proxy object of the actual view provider""" 
         # general properties
@@ -159,6 +137,8 @@ class PageView:
                          "Show view frame")#.ShowFrame = getParam("ShowViewFrame", "General")
         vobj.addProperty("App::PropertyBool", "ShowViewFrameCaption", "Base",
                          "Show view frame caption")#.ShowFrameCaption = getParam("ShowFrameCaption", "General")
+        vobj.addProperty("App::PropertyColor", "BackgroundColor", "Base",
+                         "Backgroud color of view widget")
         # grid properties
         vobj.addProperty("App::PropertyBool", "ShowGrid", "Grid",
                          "Show background grid")
@@ -166,8 +146,11 @@ class PageView:
                          "Grid spacing in mm")
         vobj.Proxy = self
 #        self.Type = "Page"
-
-        
+   
+    def doubleClicked(self, vp):
+        self.graphics_view.setActive()
+        return True
+    
     def attach(self, vp):
         """Create and configure a new QSubWindow in FreeCAD MDIArea"""
         self.showPage()
@@ -184,7 +167,8 @@ class PageView:
     def updateData(self, fp, prop):
         """Called when Page property changes"""
         if prop == "Label":
-            self.relabel(fp.getPropertyByName("Label"))
+            self.graphics_view.setWindowTitle(fp.getPropertyByName("Label"))
+#            self.relabel(fp.getPropertyByName("Label"))
         pass
     
     def onDelete(self, vp, subname):
@@ -197,36 +181,41 @@ class PageView:
     def relabel(self, title):
         """a"""
         self.graphics_view.setPageTitle(title)
-    
+#    
 #    def onRelabel(self, pDoc):
-#        cap = "{} : {}".format(pDoc.getDocument().Label.getValue(), "page")  
+#        cap = "New Page"#"{} : {}".format(pDoc.getDocument().Label, "page")  
 #        self.relabel(cap)
         
     def showPage(self):
         self.graphics_view = PageGraphicsView()
             
     def hidePage(self):
-        self.graphics_view.parentWidget().deleteLater() #schedule for deletion
+        subwindow = self.graphics_view.parentWidget()
+        subwindow.deleteLater() #schedule for deletion
 
-#    def __getstate__(self):
-#        """When saving the document this object gets stored using Python"s json module.\
-#                Since we have some un-serializable parts here -- the Coin stuff -- we must define this method\
-#                to return a tuple of all serializable objects or None."""
-#        return None
+    def __getstate__(self):
+        """When saving the document this object gets stored using Python"s json module.\
+            Since we have some un-serializable parts here -- the Coin stuff -- we must define this method\
+            to return a tuple of all serializable objects or None.
+            Allows to save custom attributes of this object as strings, so
+        they can be saved when saving the FreeCAD document"""
+#        self.relabel("NewLabel")
+#        self.graphics_view.setDocumentLabel(FreeCAD.ActiveDocument.Label)
+        return None
 # 
-#    def __setstate__(self,state):
-#        """When restoring the serialized object from document we have the chance to set some internals here.\
-#                Since no data were serialized nothing needs to be done here."""
-#        return None
+    def __setstate__(self,state):
+        """When restoring the serialized object from document we have the chance to set some internals here.\
+                Since no data were serialized nothing needs to be done here.
+                 Reads values previously saved with __setstate__()"""
+        return None
 
     def getIcon(self):
-        return ":/icons/page.svg" # FIXME: O icone demora para aparecer. Porque?
+        # FIXME: The icon has a tiny delay.
+        return ":/icons/page.svg" 
 
     
 class PageCommand:
     """Command for creating new page"""
-# NOTA: se basear no metodo CmdDrawingOpen
-#https://github.com/FreeCAD/FreeCAD/blob/master/src/Mod/Drawing/Gui/Command.cpp
     def IsActive(self):
         if FreeCADGui.ActiveDocument == None:
             return False
@@ -239,13 +228,10 @@ class PageCommand:
         pass
     
     def Activated(self):
-        # 1) abre janela para escolher qual arquivo escolher
         page = FreeCAD.ActiveDocument.addObject("App::DocumentObjectGroupPython", "Page")
         Page(page)
-        PageView(page.ViewObject)
-        
+        PageView(page.ViewObject)       
         FreeCAD.ActiveDocument.recompute()
-       # return fpo
 
     def GetResources(self):
         return {"Pixmap" : ":/icons/new_page.svg",

@@ -68,12 +68,12 @@ class PageGraphicsView(QtGui.QGraphicsView):
         scene = self.scene()
         scene.clear()
         self.resetTransform()
-        # create drawing paper 
+        # Create drawing paper 
         self.m_svgItem = QtSvg.QGraphicsSvgItem(template)
         self.m_svgItem.setFlags(QtGui.QGraphicsItem.ItemClipsToShape)
         self.m_svgItem.setCacheMode(QtGui.QGraphicsItem.NoCache)
         self.m_svgItem.setZValue(0)
-        # create paper background 
+        # Create paper background 
         rect = self.m_svgItem.boundingRect()
         self.m_backgroundItem = QtGui.QGraphicsRectItem(rect)
         self.m_backgroundItem.setBrush(QtGui.QColor(255, 255, 255))
@@ -82,17 +82,40 @@ class PageGraphicsView(QtGui.QGraphicsView):
         self.m_backgroundItem.setZValue(-1)
         scene.addItem(self.m_backgroundItem)
         scene.addItem(self.m_svgItem)
-        # attach widget to FreeCAD MDI
+        # Attach widget to FreeCAD MDI
         mw =  FreeCADGui.getMainWindow()
         mdi = mw.centralWidget()
         mdi.addSubWindow(self)   
+        # Set active document when subwindow is active
+        self.document_name = FreeCAD.ActiveDocument.Name
+        def setActiveDocument():
+            FreeCAD.setActiveDocument(self.document_name)
+        subwindow = self.parentWidget()
+        subwindow.aboutToActivate.connect(setActiveDocument)
         self.show() #https://forum.freecadweb.org/viewtopic.php?t=9892
         self.fitInView(scene.sceneRect(), QtCore.Qt.KeepAspectRatio)
-        self.nome = "Pagine"
-        
+
+    # NOTE: This could be used to build a name just like Drawing WB does...
+    #       "Doc_name : Page". However, new workbenchs like Spreadsheet
+    #       and Techdraw give just the name of Feature to MDI title.    
+    #       This method probably won't be used anymore.
     def setPageTitle(self, title):
         doc_name = FreeCAD.ActiveDocument.Label
         self.setWindowTitle("{} : {}".format(doc_name, title))
+
+    def setActive(self):
+        mw =  FreeCADGui.getMainWindow()
+        mdi = mw.centralWidget()
+        mdi.setActiveSubWindow(self.parentWidget())
+        
+    def getDocument(self):
+        """Get page's document."""
+        return FreeCAD.getDocument(self.document_name)
+    
+    def getPage(self):
+        """Get page object."""
+        document = FreeCAD.getDocument(self.document_name)
+        return document.getObject(self.windowTitle())
     
     def wheelEvent(self, event):
         delta = event.delta()
