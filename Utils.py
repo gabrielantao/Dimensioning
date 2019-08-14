@@ -25,7 +25,9 @@
 """
 Convinience functions.
 """
-from math import sin, cos, radians
+from math import sin, cos, radians, degrees  
+import numpy as np
+
 import json
 import FreeCAD, FreeCADGui
 from sys import version_info
@@ -90,6 +92,10 @@ def setParam(param, value, path):
 def mmtopx(value):
     """Convert dimension in millimiter into pixel"""
     DPI = 90.0 #Inkscape default
+    if isinstance(value, QtCore.QPointF):
+        x = value.x() * DPI / 25.4
+        y = value.y() * DPI / 25.4
+        return QtCore.QPointF(x, y)
     return value * DPI / 25.4 # 1 in -> 25.4 mm 
 
 def mmtopt(value):
@@ -117,6 +123,7 @@ def setButtonColor(button, color, width=32, height=24):
     colorPix.fill(color)
     button.setIcon(QtGui.QIcon(colorPix))
 
+#TODO: use numpy functions here
 def rotate(vector, angle):
     """Rotate a vector. Angle in degrees.
     M = [cos(a) sin(a)] * [v_x]
@@ -127,3 +134,11 @@ def rotate(vector, angle):
     angle = radians(angle)
     return QtCore.QPointF( v_x*cos(angle) + v_y*sin(angle),
                           -v_x*sin(angle) + v_y*cos(angle))
+
+def angleBetween(vector_1, vector_2):
+    """Calculate the angle between two numpy column arrays in degrees."""
+    num = np.vdot(vector_1, vector_2) #dot product
+    num /= np.linalg.norm(vector_1) * np.linalg.norm(vector_2)
+    factor = np.linalg.det(np.concatenate([vector_1, vector_2], axis=1).T)
+    factor = 1 if factor >= 0 else -1
+    return factor*degrees(np.arccos(num))

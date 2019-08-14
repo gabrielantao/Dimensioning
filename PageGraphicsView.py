@@ -85,8 +85,7 @@ class PageGraphicsView(QtGui.QGraphicsView):
         subwindow.aboutToActivate.connect(setActiveDocument)
         self.show() #https://forum.freecadweb.org/viewtopic.php?t=9892
         self.fitInView(self.scene().sceneRect(), QtCore.Qt.KeepAspectRatio)
-        # TODO: In future, change this icon. 
-        subwindow.setWindowIcon(QtGui.QIcon(":/icons/page.svg"))
+        subwindow.setWindowIcon(QtGui.QIcon(":/icons/window_icon.svg"))
 
     # NOTE: This could be used to build a name just like Drawing WB does...
     #       "Doc_name : Page". However, new workbenchs like Spreadsheet

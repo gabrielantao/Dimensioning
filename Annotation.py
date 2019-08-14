@@ -42,7 +42,7 @@ class AnnotationTask:
     # https://mandeep7.wordpress.com/2017/05/07/using-qt-ui-files-with-pyside-in-freecad/
     INSERT_MODE, STAGE_MODE, EDIT_MODE = range(3)
     def __init__(self, graphics_view, view_provider=None):
-        self.form = FreeCADGui.PySideUic.loadUi(":/ui/annotation_task.ui")
+        self.form = FreeCADGui.PySideUic.loadUi(":/ui/task_annotation.ui")
         self.form.font_family.setCurrentFont(QtGui.QFont("ISO 3098"))
         setButtonColor(self.form.font_color_button, QtGui.QColor(0, 0, 0, 255))
         self.createColorDialog()
@@ -169,13 +169,11 @@ class AnnotationTask:
                 FreeCAD.ActiveDocument.recompute()
                 FreeCAD.Console.PrintMessage("Annotation created.\n")
         if event.key() == QtCore.Qt.Key_Delete:
-            for item in self.annotation.removeArrow():
+            for item in self.annotation.getSelected():
                 self.scene.removeItem(item)
-#                self.annotation.update()
-                
-        # TODO: implement close taskdialog with Escape key
         elif event.key() == QtCore.Qt.Key_Escape: #close
-            pass 
+            self.clicked(0)
+            FreeCADGui.Control.closeDialog()
         
     def colorDialogAccepted(self, color):
         """Slot cancel color dialog. Reset actual color."""
@@ -380,16 +378,20 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
         self.arrows.append(arrow)
         self.point_catchers.append(PointCatcher(arrow))
     
-    def removeArrow(self):
-        """Remove arrow."""
-        remove_item = []
+    def getSelected(self):
+        """Get selected arrows."""
+        selected_items = []
         i = 0
         for i in range(len(self.point_catchers)-1, -1, -1): #iter backwards
             if self.point_catchers[i].isSelected():
-                remove_item.append(self.point_catchers.pop(i))
-                remove_item.append(self.arrows.pop(i))
+                selected_items.append(self.point_catchers.pop(i))
+                selected_items.append(self.arrows.pop(i))
         self.update()
-        return remove_item
+        return selected_items
+    
+    def getAllChildren(self):
+        """Get all arrows and point catchers."""
+        return self.point_catchers + self.arrows
 
     def getConfig(self, config):
         return self.config[config]
@@ -516,8 +518,8 @@ class AnnotationItem(QtGui.QGraphicsSimpleTextItem):
     def setVisible(self, visible):
         """Set visibility to annotation and its arrows."""
         super(AnnotationItem, self).setVisible(visible)
-        for arrow in self.arrows:
-            arrow.setVisible(visible)
+        for item in self.getAllChildren():
+            item.setVisible(visible)
             
     def setEditMode(self, value):
         """Edit mode, true when editing (or creating) the annotation"""
@@ -653,18 +655,32 @@ class AnnotationView:
         feature.LeaderStyle = self.annotation.config["style"]
         feature.Side = self.annotation.config["side"]
         feature.Head = self.annotation.config["head"]
-        
+    
+    def getGraphicsView(self, vp):
+        page = vp.Object.getParentGroup() #feature
+        page_view = page.ViewObject.Proxy
+        return page_view.graphics_view
+    
 #    def setEdit(self, mode):
 #        #https://www.freecadweb.org/wiki/Std_Edit
 #        """Enter in task dialog to edit annotation."""
 #        FreeCADGui.Control.showDialog(AnnotationTask(getGraphicsView()))
 #        return True
     
+    def onDelete(self, vp, subname):
+        """Delete the annotation itens."""
+        graphics_view = self.getGraphicsView(vp)
+        scene = graphics_view.scene()
+        scene.removeItem(self.annotation)
+        for item in self.annotation.getAllChildren():
+            scene.removeItem(item)
+        FreeCADGui.Control.closeDialog() #force dialog close
+        return True
+    
     def doubleClicked(self, vp):
         """Called when double click in object in treeview."""
-        page = vp.Object.getParentGroup() #feature
-        page_view = page.ViewObject.Proxy
-        page_view.graphics_view.setActive()
+        graphics_view = self.getGraphicsView(vp)
+        graphics_view.setActive()
         task_dialog = AnnotationTask(getGraphicsView(), vp)
         FreeCADGui.Control.showDialog(task_dialog)
         return True
@@ -725,7 +741,6 @@ class AnnotationView:
         elif prop == "Head":
             leader_head = fp.getPropertyByName("Head")
             self.annotation.configAnnotation(head=leader_head)
-            
             
     def getIcon(self):
         return ":/icons/annotation.svg"

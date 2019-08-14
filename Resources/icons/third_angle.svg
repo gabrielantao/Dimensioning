@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created by Redrose64 for Wikipedia -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="200"
+   height="100"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.91 r"
+   sodipodi:docname="third_angle.svg">
+  <metadata
+     id="metadata26">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs24" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1023"
+     id="namedview22"
+     showgrid="false"
+     inkscape:zoom="5.36"
+     inkscape:cx="93.438782"
+     inkscape:cy="50.548442"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2" />
+  <title
+     id="title4">Third Angle Projection</title>
+  <g
+     stroke="black"
+     stroke-width="2"
+     fill="none"
+     id="g14">
+    <path
+       style="fill:#ffffff;fill-opacity:1"
+       d="M 150 10 A 40 40 0 0 0 110 50 A 40 40 0 0 0 150 90 A 40 40 0 0 0 190 50 A 40 40 0 0 0 150 10 z M 150 30 A 20 20 0 0 1 170 50 A 20 20 0 0 1 150 70 A 20 20 0 0 1 130 50 A 20 20 0 0 1 150 30 z "
+       id="circle20" />
+    <polygon
+       points="10,10 90,30 90,70 10,90"
+       id="polygon16"
+       style="fill:#ffffff;fill-opacity:1" />
+  </g>
+  <rect
+     x="0"
+     y="0"
+     width="200"
+     height="100"
+     fill="white"
+     stroke="none"
+     id="rect6"
+     style="fill:none" />
+  <g
+     stroke="#404040"
+     stroke-width="1"
+     stroke-dasharray="35,5,5,5"
+     stroke-dashoffset="17.5"
+     id="g8">
+    <line
+       x1="0"
+       y1="50"
+       x2="200"
+       y2="50"
+       id="line10" />
+    <line
+       x1="150"
+       y1="0"
+       x2="150"
+       y2="100"
+       id="line12" />
+  </g>
+</svg>

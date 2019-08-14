@@ -23,18 +23,41 @@
 #*                                                                         *
 #***************************************************************************/
 
+"""
+MODULE FOR TESTS
+"""
 
-import FreeCADGui, FreeCAD
-import Page
-import Orthographic
-import Annotation
-import Image
-import Test
 
-import Dimensioning_rc #create resources
-from PySide.QtGui import QFontDatabase
+from PySide import QtGui, QtCore, QtSvg
+import FreeCAD, FreeCADGui
+from Utils import getGraphicsView
+    
+from SvgParser import SvgParser
+  
+class TestCommand:
+    """Command for test."""   
+    def IsActive(self):
+        if FreeCADGui.ActiveDocument == None:
+            return False
+        return not FreeCADGui.Control.activeDialog()
+        
+    def Activated(self):  
+        graphics_view = getGraphicsView()
+        if not graphics_view: # page is not active
+            return 
+        with open("/home/gabrielantao/.FreeCAD/Mod/Dimensioning/Test/semicircle4.svg", "r") as f:
+            parser = SvgParser(f.read())
+            for item in parser.vertices:
+                graphics_view.scene().addItem(item)
+            for item in parser.paths:
+                graphics_view.scene().addItem(item)                
+            FreeCAD.Console.PrintMessage("{}\n".format(len(parser.vertices)))
+                
 
-# load default font
-QFontDatabase.addApplicationFont(":/fonts/ISO_3098.ttf")
-QFontDatabase.addApplicationFont(":/fonts/ISO_3098Italic.ttf")
+    def GetResources(self):
+        return {"Pixmap" : ":/icons/test.svg",
+                "Accel" : "Shift+T",
+                "MenuText": "Test", 
+                "ToolTip": "Make a test."}
 
+FreeCADGui.addCommand("Dimensioning_Test", TestCommand())

@@ -35,6 +35,7 @@
 		<file>icons/linearDimension.svg</file>
 		<file>icons/align_left.svg</file>
 		<file>icons/circularDimension.svg</file>
+		<file>icons/third_angle.svg</file>
 		<file>icons/text_vertical.svg</file>
 		<file>icons/centerLine.svg</file>
 		<file>icons/align_right.svg</file>
@@ -43,7 +44,6 @@
 		<file>icons/annotation_bent.svg</file>
 		<file>icons/escape.svg</file>
 		<file>icons/annotation_top.svg</file>
-		<file>icons/drawing-orthoviews.svg</file>
 		<file>icons/arrow_open.svg</file>
 		<file>icons/linearDimensionStack.svg</file>
 		<file>icons/arrow_tick.svg</file>
@@ -56,10 +56,13 @@
 		<file>icons/exportToDxf.svg</file>
 		<file>icons/arrow_opendot.svg</file>
 		<file>icons/new-drawing-page-3.svg</file>
+		<file>icons/window_icon.svg</file>
 		<file>icons/textEdit.svg</file>
+		<file>icons/orthographic.svg</file>
 		<file>icons/new_page.svg</file>
 		<file>icons/halfLinearDimension.svg</file>
 		<file>icons/annotation_straight.svg</file>
+		<file>icons/first_angle.svg</file>
 		<file>icons/textMove.svg</file>
 		<file>icons/textAdd.svg</file>
 		<file>icons/text_horizontal.svg</file>
@@ -68,11 +71,12 @@
 		<file>icons/noteCircle.svg</file>
 		<file>ui/preferences_dimensionline.ui</file>
 		<file>ui/PrefsTemplate.ui</file>
+		<file>ui/task_image.ui</file>
+		<file>ui/task_orthographic.ui</file>
 		<file>ui/preferences_line.ui</file>
 		<file>ui/titleblock_task.ui</file>
-		<file>ui/image_task.ui</file>
-		<file>ui/annotation_task.ui</file>
 		<file>ui/preferences_general.ui</file>
+		<file>ui/task_annotation.ui</file>
 		<file>fonts/ISO_3098.ttf</file>
 		<file>fonts/ISO_3098Italic.ttf</file>
 		<file>icons/plus.png</file>

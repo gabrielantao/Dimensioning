@@ -28,7 +28,8 @@ Superclasses for all graphic items on page.
 """
 
 from PySide import QtGui, QtCore
-from Utils import mmtopt, rotate
+from Utils import mmtopx, mmtopt, rotate, angleBetween
+import FreeCAD
 
 # https://doc.qt.io/qt-5/qtwidgets-graphicsview-diagramscene-example.html
 # https://doc.qt.io/archives/qt-4.8/qt-graphicsview-diagramscene-arrow-cpp.html
@@ -128,7 +129,6 @@ class PointCatcher(QtGui.QGraphicsRectItem):
         self.setRect(0,0,10,10)
         self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
         self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
-#        self.setSelected(True)
     
     def mouseMoveEvent(self, event):
         point = self.mapToScene(self.rect().center())
@@ -153,4 +153,139 @@ class PointCatcher(QtGui.QGraphicsRectItem):
         painter.setPen(pen)
         painter.drawRect(item_pos.x()-4, item_pos.y()-4, 9, 9)
         
+#TODO LIST
+# () Refazer a shape circulo
+# () Refazer a shape elipse
+# () Refazer a shape arc        
+# 1) () acertar o arco
+class PathItem(QtGui.QGraphicsPathItem):
+    """Generic class to all paths."""
+    def __init__(self, path_type, start_point, *data):
+        super(PathItem, self).__init__()
+#        self.editModeOn = False
+        self.type = path_type
+        self.start_point = start_point #QPoint
+        self.data = data #tuple
+        # Set pen
+        self.pen = QtGui.QPen(QtCore.Qt.black)
+        self.pen.setWidthF(2) # TODO: alterar a espessura
+        self.setPen(self.pen)
+        self.setAcceptHoverEvents(True)
+        # Create path
+        path = QtGui.QPainterPath()
+        path.moveTo(mmtopx(self.start_point))
+        if self.type == "line":
+            path.lineTo(mmtopx(self.data[0]))
+        elif self.type == "arc":
+            path.arcTo(*self.convertArc(data))
+        elif self.type == "cubic":
+            data = [mmtopx(p) for p in self.data]
+            path.cubicTo(*data)
+        elif self.type == "circle" or self.type == "ellipse":
+            data = [mmtopx(p) for p in self.data]
+            path.addEllipse(*data)
+        self.setPath(path)
+    
+    def convertArc(self, data):
+        """Convert parameterization from endpoint to center.
+        https://www.w3.org/TR/SVG/implnote.html#ArcConversionEndpointToCenter
+        """
+        from math import radians, sin, cos, sqrt
+        import numpy as np
+        x_1 = self.start_point.x()
+        y_1 = self.start_point.y()
+        r_x = data[0]
+        r_y = data[1]
+        phi = radians(data[2]) #rotation
+        f_a = data[3] #large arc
+        f_s = data[4] #sweep
+        x_2 = data[5]
+        y_2 = data[6]
+        # NOTE: It seems that FreeCAD never apply rotation to the arcs.
+        #       FreeCAD recalculate new values to the arc instead.
+        xy_prime = np.mat([[cos(phi), sin(phi)], [-sin(phi), cos(phi)]]) * \
+                   np.array([[(x_1-x_2)/2], [(y_1-y_2)/2]])
+        x_prime = xy_prime.item((0, 0))
+        y_prime = xy_prime.item((1, 0))
+        factor = -1 if f_a == f_s else 1 #if large_arc == sweep
+        c_prime = factor*sqrt(((r_x*r_y)**2-(r_x*y_prime)**2-(r_y*x_prime)**2) / \
+                              ((r_x*y_prime)**2+(r_y*x_prime)**2))
+        c_prime *= np.array([[r_x*y_prime/r_y], [-r_y*x_prime/r_x]])
+        c = np.mat([[cos(phi), -sin(phi)], [sin(phi), cos(phi)]])*c_prime + \
+            np.array([[(x_1+x_2)/2], [(y_1+y_2)/2]])
+        c_x_prime = c_prime.item((0, 0))
+        c_y_prime = c_prime.item((1, 0))
+        start_angle = angleBetween(np.array([[1], [0]]), 
+                                   np.array([[(x_prime-c_x_prime)/r_x],
+                                             [(y_prime-c_y_prime)/r_y]]))
+        arc_angle = angleBetween(np.array([[(x_prime-c_x_prime)/r_x],
+                                           [(y_prime-c_y_prime)/r_y]]),
+                                 np.array([[(-x_prime-c_x_prime)/r_x],
+                                           [(-y_prime-c_y_prime)/r_y]])) % 360   
+#        if f_s == 0 and arc_angle > 0:
+#            arc_angle -= 360
+#        elif f_s == 1 and arc_angle < 0:
+#            arc_angle += 360
+        if f_s == 0:
+            arc_angle = abs(arc_angle)
+        else:
+            arc_angle = -abs(arc_angle)
+        
+        # NOTE: phi always zero
+        # Real rect (dimensions in millimiters)
+        rect = QtCore.QRectF()
+        width = 2 * r_x
+        height = 2 * r_y
+        rect.setWidth(width)
+        rect.setHeight(height)
+        center = QtCore.QPointF(c.item((0, 0)), c.item((1, 0)))
+        rect.moveCenter(center)
+        self.data = (rect, start_angle, arc_angle)
+        # Rect to be drawn (dimensions in pixels)
+        rect = QtCore.QRectF()
+        rect.setWidth(mmtopx(width))
+        rect.setHeight(mmtopx(height))
+        center = QtCore.QPointF(mmtopx(c.item((0, 0))), mmtopx(c.item((1, 0))))
+        rect.moveCenter(center)
+        # PRINTS
+        FreeCAD.Console.PrintMessage(" {}\n".format(start_angle))
+        FreeCAD.Console.PrintMessage("start {}\n".format(self.start_point))
+        FreeCAD.Console.PrintMessage("end {} {}\n".format(x_2, y_2))
+        return (rect, start_angle, arc_angle)
+    
+    def hoverEnterEvent(self, event):    
+        pen = QtGui.QPen(QtGui.QColor(255, 150, 0))
+        pen.setWidthF(2)
+        self.setPen(pen)
+    
+    def hoverLeaveEvent(self, event):
+        self.setPen(self.pen)
+        
+        
+class VertexItem(QtGui.QGraphicsPathItem):
+    def __init__(self, point):
+        super(VertexItem, self).__init__()
+        self.editModeOn = False
+        self.point = QtCore.QPointF(mmtopx(point.x()), mmtopx(point.y()))
+        self.setAcceptHoverEvents(True)
+        self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
+        # Create path
+        painter_path = QtGui.QPainterPath()
+        painter_path.addEllipse(self.point, 5, 5)
+        self.setPath(painter_path)
 
+    def __eq__(self, other):
+        return isinstance(other, VertexItem)
+        
+    def __hash__(self):
+        return hash((self.point.x(), self.point.y()))
+    
+    def paint(self, painter, option, widget=None):
+        brush = QtGui.QBrush(QtCore.Qt.darkGray)
+        if self.isSelected():
+            brush.setColor(QtCore.Qt.magenta)
+        else:
+            brush.setColor(QtCore.Qt.darkGray)
+        painter.setBrush(brush)
+        painter.drawPath(self.path())
+#        super(VertexItem, self).paint(painter, option, widget)

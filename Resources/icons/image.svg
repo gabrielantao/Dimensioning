@@ -15,7 +15,7 @@
    id="svg2985"
    version="1.1"
    inkscape:version="0.91 r"
-   sodipodi:docname="insert_symbol.svg">
+   sodipodi:docname="image.svg">
   <defs
      id="defs2987">
     <linearGradient
@@ -690,9 +690,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="10.193662"
-     inkscape:cx="10.21231"
-     inkscape:cy="37.730389"
+     inkscape:zoom="2.5484155"
+     inkscape:cx="-169.26311"
+     inkscape:cy="85.545251"
      inkscape:current-layer="layer1"
      showgrid="true"
      inkscape:document-units="px"
@@ -718,7 +718,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
         <dc:creator>
           <cc:Agent>
             <dc:title>[Yorik van Havre]</dc:title>
@@ -755,6 +755,11 @@
        id="layer2"
        inkscape:label="layer2"
        transform="translate(-562.78983,-342.8385)" />
+    <path
+       style="color:#000000;display:inline;overflow:visible;visibility:visible;opacity:0.54166667;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1.95121026;marker:none;enable-background:accumulate"
+       d="m 6.9959162,15.319622 0,41.67663 45.3656378,0 11.036532,-8.201181 0,-33.475449 -56.4021698,0 z"
+       id="rect3005-1"
+       inkscape:connector-curvature="0" />
     <g
        id="g4153-1"
        style="fill:#d3d7cf">

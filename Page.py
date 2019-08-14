@@ -146,16 +146,27 @@ class PageView:
                          "Grid spacing in mm")
         vobj.Proxy = self
 #        self.Type = "Page"
-   
+
+        
     def doubleClicked(self, vp):
         self.graphics_view.setActive()
         return True
     
     def attach(self, vp):
         """Create and configure a new QSubWindow in FreeCAD MDIArea"""
-        self.showPage()
+        self.graphics_view = None
+        self.showPage("") #TODO: this is for now like this just for developing convinience
+#        import os
+#        path = os.path.dirname(__file__)
+#        # NOTE: for any reason os.path.abspath doesn't point to Dimensioning dir
+#        dialog = QtGui.QFileDialog(FreeCADGui.getMainWindow(), 
+#                                   "Open template", 
+#                                   os.path.join(path, "Resources", "templates"),
+#                                   "Scalable Vector Graphics (*.svg)")
+#        dialog.show()
+#        dialog.fileSelected.connect(self.showPage)
 
-    
+    #os.path.abspath("./Resources/templates")
     def onChanged(self, vp, prop):
         """Called when PageView property changes"""
         pass
@@ -167,7 +178,7 @@ class PageView:
                 
     def updateData(self, fp, prop):
         """Called when Page property changes"""
-        if prop == "Label":
+        if prop == "Label" and self.graphics_view:
             self.graphics_view.setWindowTitle(fp.getPropertyByName("Label"))
 #            self.relabel(fp.getPropertyByName("Label"))
         pass
@@ -187,8 +198,8 @@ class PageView:
 #        cap = "New Page"#"{} : {}".format(pDoc.getDocument().Label, "page")  
 #        self.relabel(cap)
         
-    def showPage(self):
-        self.graphics_view = PageGraphicsView()
+    def showPage(self, template):
+        self.graphics_view = PageGraphicsView()#template)
             
     def hidePage(self):
         subwindow = self.graphics_view.parentWidget()
@@ -229,7 +240,8 @@ class PageCommand:
         pass
     
     def Activated(self):
-        page = FreeCAD.ActiveDocument.addObject("App::DocumentObjectGroupPython", "Page")
+        page = FreeCAD.ActiveDocument.addObject("App::DocumentObjectGroupPython", 
+                                                "Page")
         Page(page)
         PageView(page.ViewObject)       
         FreeCAD.ActiveDocument.recompute()
