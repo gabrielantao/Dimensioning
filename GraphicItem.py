@@ -31,16 +31,17 @@ from PySide import QtGui, QtCore
 from Utils import mmtopx, mmtopt, rotate, angleBetween
 import FreeCAD
 
-# https://doc.qt.io/qt-5/qtwidgets-graphicsview-diagramscene-example.html
-# https://doc.qt.io/archives/qt-4.8/qt-graphicsview-diagramscene-arrow-cpp.html
-# http://www.richelbilderbeek.nl/CppQtExample34.htm
+
 class GraphicItem(QtGui.QGraphicsItem):
     """Basic Graphic Item that reimplements all relevant events"""
     pass
 
-class GarphicItemGroup(QtGui.QGraphicsItemGroup):
+class ViewGroup(QtGui.QGraphicsItemGroup):
     """Group all elements in a view"""
-    pass
+    def __init__(self, parent=None, scene=None):
+        super(ViewGroup, self).__init__(parent, scene)
+        self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
+        self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
 
 #classe base para desenhar setas de guia para solda, acabamento, anotacao, etc.
 # Nao usada para as dimensoes, para elas usar outro metodo (?)
@@ -157,7 +158,6 @@ class PointCatcher(QtGui.QGraphicsRectItem):
 # () Refazer a shape circulo
 # () Refazer a shape elipse
 # () Refazer a shape arc        
-# 1) () acertar o arco
 class PathItem(QtGui.QGraphicsPathItem):
     """Generic class to all paths."""
     def __init__(self, path_type, start_point, *data):
@@ -169,6 +169,7 @@ class PathItem(QtGui.QGraphicsPathItem):
         # Set pen
         self.pen = QtGui.QPen(QtCore.Qt.black)
         self.pen.setWidthF(2) # TODO: alterar a espessura
+        self.pen.setCapStyle(QtCore.Qt.RoundCap)
         self.setPen(self.pen)
         self.setAcceptHoverEvents(True)
         # Create path
@@ -178,17 +179,28 @@ class PathItem(QtGui.QGraphicsPathItem):
             path.lineTo(mmtopx(self.data[0]))
         elif self.type == "arc":
             path.arcTo(*self.convertArc(data))
+        elif self.type == "quadratic":
+            data = [mmtopx(p) for p in self.data]
+            path.quadTo(*data)
         elif self.type == "cubic":
             data = [mmtopx(p) for p in self.data]
             path.cubicTo(*data)
-        elif self.type == "circle" or self.type == "ellipse":
+        elif self.type == "circle":
+            data = [mmtopx(p) for p in self.data]
+            path.addEllipse(*data)
+        elif self.type == "ellipse":
+            self.setTransformOriginPoint(self.data[-1])
+            self.setRotation(self.data[-2])
+            self.data = tuple(self.data[:-2])
             data = [mmtopx(p) for p in self.data]
             path.addEllipse(*data)
         self.setPath(path)
     
+    #FIXME: It still create wrong arcs sometimes!
     def convertArc(self, data):
         """Convert parameterization from endpoint to center.
         https://www.w3.org/TR/SVG/implnote.html#ArcConversionEndpointToCenter
+        https://mortoray.com/2017/02/16/rendering-an-svg-elliptical-arc-as-bezier-curves/
         """
         from math import radians, sin, cos, sqrt
         import numpy as np
@@ -207,9 +219,14 @@ class PathItem(QtGui.QGraphicsPathItem):
                    np.array([[(x_1-x_2)/2], [(y_1-y_2)/2]])
         x_prime = xy_prime.item((0, 0))
         y_prime = xy_prime.item((1, 0))
-        factor = -1 if f_a == f_s else 1 #if large_arc == sweep
-        c_prime = factor*sqrt(((r_x*r_y)**2-(r_x*y_prime)**2-(r_y*x_prime)**2) / \
-                              ((r_x*y_prime)**2+(r_y*x_prime)**2))
+        factor = -1 if f_a == f_s else 1 
+        cr = (x_prime/r_x)**2 + (y_prime/r_y)**2 #c ratio
+        if cr > 1.0:
+            r_x *= sqrt(cr)
+            r_y *= sqrt(cr)
+        dq = (r_x*y_prime)**2+(r_y*x_prime)**2
+        pq = ((r_x*r_y)**2-dq)/dq
+        c_prime = factor*sqrt(max([0, pq])) #max ensure pq >= 0
         c_prime *= np.array([[r_x*y_prime/r_y], [-r_y*x_prime/r_x]])
         c = np.mat([[cos(phi), -sin(phi)], [sin(phi), cos(phi)]])*c_prime + \
             np.array([[(x_1+x_2)/2], [(y_1+y_2)/2]])
@@ -222,15 +239,10 @@ class PathItem(QtGui.QGraphicsPathItem):
                                            [(y_prime-c_y_prime)/r_y]]),
                                  np.array([[(-x_prime-c_x_prime)/r_x],
                                            [(-y_prime-c_y_prime)/r_y]])) % 360   
-#        if f_s == 0 and arc_angle > 0:
-#            arc_angle -= 360
-#        elif f_s == 1 and arc_angle < 0:
-#            arc_angle += 360
-        if f_s == 0:
-            arc_angle = abs(arc_angle)
-        else:
-            arc_angle = -abs(arc_angle)
-        
+        if f_s == 0 and arc_angle > 0:
+            arc_angle -= 360
+        elif f_s == 1 and arc_angle < 0:
+            arc_angle += 360    
         # NOTE: phi always zero
         # Real rect (dimensions in millimiters)
         rect = QtCore.QRectF()
@@ -240,18 +252,18 @@ class PathItem(QtGui.QGraphicsPathItem):
         rect.setHeight(height)
         center = QtCore.QPointF(c.item((0, 0)), c.item((1, 0)))
         rect.moveCenter(center)
-        self.data = (rect, start_angle, arc_angle)
+        self.data = (rect, -start_angle, -arc_angle)
         # Rect to be drawn (dimensions in pixels)
         rect = QtCore.QRectF()
         rect.setWidth(mmtopx(width))
         rect.setHeight(mmtopx(height))
         center = QtCore.QPointF(mmtopx(c.item((0, 0))), mmtopx(c.item((1, 0))))
         rect.moveCenter(center)
-        # PRINTS
-        FreeCAD.Console.PrintMessage(" {}\n".format(start_angle))
-        FreeCAD.Console.PrintMessage("start {}\n".format(self.start_point))
-        FreeCAD.Console.PrintMessage("end {} {}\n".format(x_2, y_2))
-        return (rect, start_angle, arc_angle)
+        return (rect, -start_angle, -arc_angle)
+    
+    def setHidden(self):
+        self.pen.setStyle(QtCore.Qt.DashLine)
+        self.setPen(self.pen)
     
     def hoverEnterEvent(self, event):    
         pen = QtGui.QPen(QtGui.QColor(255, 150, 0))
@@ -260,18 +272,23 @@ class PathItem(QtGui.QGraphicsPathItem):
     
     def hoverLeaveEvent(self, event):
         self.setPen(self.pen)
-        
-        
+    
+
 class VertexItem(QtGui.QGraphicsPathItem):
-    def __init__(self, point):
+    def __init__(self, point, rotation=[]):
         super(VertexItem, self).__init__()
         self.editModeOn = False
-        self.point = QtCore.QPointF(mmtopx(point.x()), mmtopx(point.y()))
+        self.point = point # in millimiters
+        self.px_point = QtCore.QPointF(mmtopx(point.x()), mmtopx(point.y()))
+        if len(rotation):
+            self.setTransformOriginPoint(rotation[1])
+            self.setRotation(rotation[0])            
         self.setAcceptHoverEvents(True)
         self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
         # Create path
         painter_path = QtGui.QPainterPath()
-        painter_path.addEllipse(self.point, 5, 5)
+        painter_path.addEllipse(self.px_point, 5, 5)
+#        painter_path.addRect(self.px_point.x()-5,self.px_point.y()-5, 10, 10)
         self.setPath(painter_path)
 
     def __eq__(self, other):

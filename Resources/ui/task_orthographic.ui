@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>398</width>
-    <height>793</height>
+    <height>839</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -220,41 +220,13 @@
       <string>Lines</string>
      </property>
      <layout class="QFormLayout" name="formLayout_3">
+      <property name="fieldGrowthPolicy">
+       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+      </property>
       <item row="0" column="0">
        <widget class="QLabel" name="label_3">
         <property name="text">
          <string>Visible</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>Hidden</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>Smooth</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QCheckBox" name="show_hidden">
-        <property name="enabled">
-         <bool>true</bool>
-        </property>
-        <property name="text">
-         <string>Show hidden lines</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QCheckBox" name="show_smooth">
-        <property name="text">
-         <string>Show smooth lines</string>
         </property>
        </widget>
       </item>
@@ -271,6 +243,13 @@
         </property>
        </widget>
       </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Hidden</string>
+        </property>
+       </widget>
+      </item>
       <item row="1" column="1">
        <widget class="QDoubleSpinBox" name="hidden_tick">
         <property name="suffix">
@@ -284,16 +263,96 @@
         </property>
        </widget>
       </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_6">
+        <property name="text">
+         <string>Show visible</string>
+        </property>
+       </widget>
+      </item>
       <item row="2" column="1">
-       <widget class="QDoubleSpinBox" name="smooth_tick">
-        <property name="suffix">
-         <string> mm</string>
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>Show hidden</string>
         </property>
-        <property name="singleStep">
-         <double>0.500000000000000</double>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QCheckBox" name="visible_hard">
+        <property name="enabled">
+         <bool>false</bool>
         </property>
-        <property name="value">
-         <double>0.350000000000000</double>
+        <property name="text">
+         <string>Hard edge</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QCheckBox" name="hidden_hard">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="text">
+         <string>Hard edge</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QCheckBox" name="visible_smooth">
+        <property name="text">
+         <string>Smooth edge</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QCheckBox" name="hidden_smooth">
+        <property name="text">
+         <string>Smooth edge</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QCheckBox" name="visible_contour">
+        <property name="text">
+         <string>Contour edge</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QCheckBox" name="hidden_contour">
+        <property name="text">
+         <string>Contour edge</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="0">
+       <widget class="QCheckBox" name="visible_apparent">
+        <property name="text">
+         <string>Apparent contour </string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1">
+       <widget class="QCheckBox" name="hidden_apparent">
+        <property name="text">
+         <string>Apparent contour</string>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="0">
+       <widget class="QCheckBox" name="visible_iso">
+        <property name="text">
+         <string>Isoparametric</string>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="1">
+       <widget class="QCheckBox" name="hidden_iso">
+        <property name="text">
+         <string>Isoparametric</string>
         </property>
        </widget>
       </item>
@@ -330,7 +389,22 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
-       <widget class="QListWidget" name="listWidget"/>
+       <widget class="QTreeWidget" name="treeWidget">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>200</height>
+         </size>
+        </property>
+        <attribute name="headerVisible">
+         <bool>false</bool>
+        </attribute>
+        <column>
+         <property name="text">
+          <string>Parts</string>
+         </property>
+        </column>
+       </widget>
       </item>
      </layout>
     </widget>

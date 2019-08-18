@@ -25,13 +25,13 @@
 
 
 import FreeCADGui, FreeCAD
+import Dimensioning_rc #create resources
 import Page
 import Orthographic
 import Annotation
 import Image
 import Test
 
-import Dimensioning_rc #create resources
 from PySide.QtGui import QFontDatabase
 
 # load default font

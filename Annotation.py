@@ -55,7 +55,7 @@ class AnnotationTask:
         self.scene.mousePressSignal.connect(self.mousePress)
         self.scene.keyPressSignal.connect(self.keyPress)
 #        self.view_provider = view_provider
-        if view_provider:
+        if view_provider: #edition mode
             self.mode = self.EDIT_MODE
 #            self.feature = view_provider.Object
             self.view_provider = view_provider
@@ -294,7 +294,7 @@ class AnnotationTask:
     # https://doc.qt.io/qt-5/qtwidgets-widgets-charactermap-example.html    
     def createSymbolButton(self):
         """Create a symbol toolbutton menu"""
-        import Dimensioning_rc
+#        import Dimensioning_rc
         def insert_symbol(unicode_):
             def func():
                 return self.form.text_widget.insertPlainText(unicode_)

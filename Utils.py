@@ -136,7 +136,9 @@ def rotate(vector, angle):
                           -v_x*sin(angle) + v_y*cos(angle))
 
 def angleBetween(vector_1, vector_2):
-    """Calculate the angle between two numpy column arrays in degrees."""
+    """Calculate the angle between two numpy column arrays in degrees.
+    https://www.w3.org/TR/SVG/implnote.html#ArcConversionEndpointToCenter
+    """
     num = np.vdot(vector_1, vector_2) #dot product
     num /= np.linalg.norm(vector_1) * np.linalg.norm(vector_2)
     factor = np.linalg.det(np.concatenate([vector_1, vector_2], axis=1).T)

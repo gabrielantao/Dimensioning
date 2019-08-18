@@ -34,17 +34,18 @@ from PySide import QtCore
 from GraphicItem import PathItem, VertexItem
 import FreeCAD
 
+# TODO: 
+# (X) recalcular o viewport {Usar o grupo para mover quando nao estiver no modo de edicao}
+# () gerar o "frame" que eh o grupo de itens
 class SvgParser:
     def __init__(self, svg, h_margin=10, v_margin=10):
-        # le a string e separa as partes (parse)
-        # cria objetos de ponto e circulo
-        # reseta viewport
         moveto = re.compile(r"(-?\d+\.\d*)\s*,?\s*(-?\d+\.\d*)?")
-        xml = minidom.parseString(svg)
-        viewport = QtCore.QRectF(0, 0, 0, 0)
-#        current_point = QtCore.QPointF(0, 0) # moveto point
         self.vertices = set()
         self.paths = []
+        if svg.strip() == "":
+            return #avoid ExpatError    
+        xml = minidom.parseString(svg)
+        viewport = QtCore.QRectF(0, 0, 0, 0)
         for node in xml.getElementsByTagName("path"):
             attr = node.getAttribute("d")
             list_ = re.split("([M|m|L|l|H|h|V|v|A|a|Q|q|T|t|C|c|S|s])", attr)[1:]
@@ -75,7 +76,13 @@ class SvgParser:
                     self.paths.append(PathItem("arc", current_point, *coord))                         
                     current_point = QtCore.QPointF(coord[5], coord[6])
                 elif type_ == "Q":
-                    raise NotImplementedError("Q command not implemented")
+                    points = []
+                    coord = map(float, re.split("[,|\s]", list_[i+1].strip()))
+                    for i in range(0, len(coord), 2):
+                        x, y = coord[i:i+2]
+                        points.append(QtCore.QPointF(x, y))                    
+                    self.paths.append(PathItem("quadratic", current_point, *points))                         
+                    current_point = QtCore.QPointF(x, y) 
                 elif type_ == "T":
                     raise NotImplementedError("T command not implemented")
                 elif type_ == "C":
@@ -89,7 +96,6 @@ class SvgParser:
                 elif type_ == "S":
                     raise NotImplementedError("S command not implemented")
                 self.vertices.add(VertexItem(current_point))
-#                FreeCAD.Console.PrintMessage("{}\n".format(len(self.vertices)))
         for node in xml.getElementsByTagName("circle"):
             points = []
             c_x = float(node.getAttribute("cx")) 
@@ -109,20 +115,15 @@ class SvgParser:
             points.append(current_point) #center 
             points.append(float(node.getAttribute("rx"))) #radius_x
             points.append(float(node.getAttribute("ry"))) #radius_y
+            transform = node.parentNode.getAttribute('transform')
+            transform = re.split(r"[\(|\)|,]", transform)
+            transform = map(float, transform[1:4])
+            points.append(transform[0]) #rotation
+            pivot = QtCore.QPointF(transform[1], transform[2])
+            points.append(pivot) 
             self.paths.append(PathItem("ellipse", current_point, *points)) 
-            self.vertices.add(VertexItem(current_point))
-        # Reset viewport
-#        if x < viewport.x():
-#            viewport.setX(x)
-#        elif x > viewport.width():
-#            viewport.setWidth(x)
-#        if y < viewport.y():
-#            viewport.setY(y)
-#        elif y > viewport.y():
-#            viewport.setHeight(y)
-#        self.vertices.append(VertexItem(current_point))
-        
-        
+            self.vertices.add(VertexItem(current_point, [transform[0], pivot]))
+   
         
     def resetViewport(self, viewport, x, y):
         if x < viewport.x():
@@ -134,5 +135,9 @@ class SvgParser:
         elif y > viewport.y():
             viewport.setHeight(y)
         
-
+    def getVertices(self):
+        return self.vertices
+    
+    def getPathItems(self):
+        return self.paths
             

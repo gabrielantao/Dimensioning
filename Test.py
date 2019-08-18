@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #***************************************************************************
-#*   Copyright (c) 2019 Gabriel Antao <gabrielantao@poli.ufrj.br>          *   
+#*   Copyright (c) 2019 Gabriel Antao <gabrielantao@poli.ufrj.br>          *
 #*                                                                         *
 #*   This file is part of the FreeCAD CAx development system.              *
 #*                                                                         *
@@ -31,33 +31,41 @@ MODULE FOR TESTS
 from PySide import QtGui, QtCore, QtSvg
 import FreeCAD, FreeCADGui
 from Utils import getGraphicsView
-    
+
 from SvgParser import SvgParser
-  
+from GraphicItem import ViewGroup
+
 class TestCommand:
-    """Command for test."""   
+    """Command for test."""
     def IsActive(self):
         if FreeCADGui.ActiveDocument == None:
             return False
         return not FreeCADGui.Control.activeDialog()
-        
-    def Activated(self):  
+
+    def Activated(self):
         graphics_view = getGraphicsView()
         if not graphics_view: # page is not active
-            return 
+            return
         with open("/home/gabrielantao/.FreeCAD/Mod/Dimensioning/Test/semicircle4.svg", "r") as f:
             parser = SvgParser(f.read())
+            #group = QtGui.QGraphicsItemGroup()
+            #group.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
+            #group.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
+#            group.setPos(QtCore.QPointF(0,0))
             for item in parser.vertices:
                 graphics_view.scene().addItem(item)
+                #group.addToGroup(item)
             for item in parser.paths:
-                graphics_view.scene().addItem(item)                
-            FreeCAD.Console.PrintMessage("{}\n".format(len(parser.vertices)))
-                
+                graphics_view.scene().addItem(item)
+                #group.addToGroup(item)
+            #graphics_view.scene().addItem(group)
+#            FreeCAD.Console.PrintMessage("{}\n".format(group))
+
 
     def GetResources(self):
         return {"Pixmap" : ":/icons/test.svg",
                 "Accel" : "Shift+T",
-                "MenuText": "Test", 
+                "MenuText": "Test",
                 "ToolTip": "Make a test."}
 
 FreeCADGui.addCommand("Dimensioning_Test", TestCommand())
