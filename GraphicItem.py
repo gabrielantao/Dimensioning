@@ -38,10 +38,19 @@ class GraphicItem(QtGui.QGraphicsItem):
 
 class ViewGroup(QtGui.QGraphicsItemGroup):
     """Group all elements in a view"""
-    def __init__(self, parent=None, scene=None):
-        super(ViewGroup, self).__init__(parent, scene)
+    def __init__(self, paths=[]):
+        super(ViewGroup, self).__init__(parent=None, scene=None)
         self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
         self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
+        self.addItems(paths)
+        
+    def addItems(self, items):
+        for item in items:
+            self.addToGroup(item)
+
+    def removeItems(self, items):
+        for item in items:
+            self.removeFromGroup(item)
 
 #classe base para desenhar setas de guia para solda, acabamento, anotacao, etc.
 # Nao usada para as dimensoes, para elas usar outro metodo (?)
@@ -160,40 +169,40 @@ class PointCatcher(QtGui.QGraphicsRectItem):
 # () Refazer a shape arc        
 class PathItem(QtGui.QGraphicsPathItem):
     """Generic class to all paths."""
-    def __init__(self, path_type, start_point, *data):
+    def __init__(self, path_type, start_point, *path_data):
         super(PathItem, self).__init__()
 #        self.editModeOn = False
-        self.type = path_type
+        self.path_type = path_type
         self.start_point = start_point #QPoint
-        self.data = data #tuple
+        self.path_data = path_data #tuple
         # Set pen
         self.pen = QtGui.QPen(QtCore.Qt.black)
-        self.pen.setWidthF(2) # TODO: alterar a espessura
+        self.pen.setWidthF(mmtopx(0.35))
         self.pen.setCapStyle(QtCore.Qt.RoundCap)
         self.setPen(self.pen)
         self.setAcceptHoverEvents(True)
         # Create path
-        path = QtGui.QPainterPath()
-        path.moveTo(mmtopx(self.start_point))
-        if self.type == "line":
-            path.lineTo(mmtopx(self.data[0]))
-        elif self.type == "arc":
-            path.arcTo(*self.convertArc(data))
-        elif self.type == "quadratic":
-            data = [mmtopx(p) for p in self.data]
-            path.quadTo(*data)
-        elif self.type == "cubic":
-            data = [mmtopx(p) for p in self.data]
-            path.cubicTo(*data)
-        elif self.type == "circle":
-            data = [mmtopx(p) for p in self.data]
+        path = QtGui.QPainterPath(mmtopx(self.start_point))
+#        path.moveTo(mmtopx(self.start_point))
+        if self.path_type == "line":
+            path.lineTo(mmtopx(self.path_data[0]))
+        elif self.path_type == "arc":
+            path.arcTo(*self.convertArc(path_data))
+        elif self.path_type == "quadratic":
+            path_data = [mmtopx(p) for p in self.path_data]
+            path.quadTo(*path_data)
+        elif self.path_type == "cubic":
+            path_data = [mmtopx(p) for p in self.path_data]
+            path.cubicTo(*path_data)
+        elif self.path_type == "circle":
+            data = [mmtopx(p) for p in self.path_data]
             path.addEllipse(*data)
-        elif self.type == "ellipse":
-            self.setTransformOriginPoint(self.data[-1])
-            self.setRotation(self.data[-2])
-            self.data = tuple(self.data[:-2])
-            data = [mmtopx(p) for p in self.data]
-            path.addEllipse(*data)
+        elif self.path_type == "ellipse":
+            self.setTransformOriginPoint(self.path_data[-1])
+            self.setRotation(self.path_data[-2])
+            self.path_data = tuple(self.path_data[:-2])
+            path_data = [mmtopx(p) for p in self.path_data]
+            path.addEllipse(*path_data)
         self.setPath(path)
     
     #FIXME: It still create wrong arcs sometimes!
@@ -243,7 +252,7 @@ class PathItem(QtGui.QGraphicsPathItem):
             arc_angle -= 360
         elif f_s == 1 and arc_angle < 0:
             arc_angle += 360    
-        # NOTE: phi always zero
+        # TODO: consider phi here to calculate rect
         # Real rect (dimensions in millimiters)
         rect = QtCore.QRectF()
         width = 2 * r_x
@@ -252,7 +261,7 @@ class PathItem(QtGui.QGraphicsPathItem):
         rect.setHeight(height)
         center = QtCore.QPointF(c.item((0, 0)), c.item((1, 0)))
         rect.moveCenter(center)
-        self.data = (rect, -start_angle, -arc_angle)
+        self.path_data = (rect, -start_angle, -arc_angle)
         # Rect to be drawn (dimensions in pixels)
         rect = QtCore.QRectF()
         rect.setWidth(mmtopx(width))
@@ -273,6 +282,9 @@ class PathItem(QtGui.QGraphicsPathItem):
     def hoverLeaveEvent(self, event):
         self.setPen(self.pen)
     
+    def __repr__(self):
+        return "{}: {}".format(self.path_type, self.path_data)
+
 
 class VertexItem(QtGui.QGraphicsPathItem):
     def __init__(self, point, rotation=[]):

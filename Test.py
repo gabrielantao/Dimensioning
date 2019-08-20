@@ -32,7 +32,7 @@ from PySide import QtGui, QtCore, QtSvg
 import FreeCAD, FreeCADGui
 from Utils import getGraphicsView
 
-from SvgParser import SvgParser
+from SvgParser import svgParser
 from GraphicItem import ViewGroup
 
 class TestCommand:
@@ -47,7 +47,7 @@ class TestCommand:
         if not graphics_view: # page is not active
             return
         with open("/home/gabrielantao/.FreeCAD/Mod/Dimensioning/Test/semicircle4.svg", "r") as f:
-            parser = SvgParser(f.read())
+            parser = svgParser(f.read())
             #group = QtGui.QGraphicsItemGroup()
             #group.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
             #group.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)

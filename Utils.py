@@ -22,9 +22,11 @@
 #*   If not, see <https://www.gnu.org/licenses/>                           *
 #*                                                                         *
 #***************************************************************************/
+
 """
 Convinience functions.
 """
+
 from math import sin, cos, radians, degrees  
 import numpy as np
 
