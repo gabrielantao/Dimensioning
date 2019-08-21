@@ -36,22 +36,6 @@ class GraphicItem(QtGui.QGraphicsItem):
     """Basic Graphic Item that reimplements all relevant events"""
     pass
 
-class ViewGroup(QtGui.QGraphicsItemGroup):
-    """Group all elements in a view"""
-    def __init__(self, paths=[]):
-        super(ViewGroup, self).__init__(parent=None, scene=None)
-        self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
-        self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
-        self.addItems(paths)
-        
-    def addItems(self, items):
-        for item in items:
-            self.addToGroup(item)
-
-    def removeItems(self, items):
-        for item in items:
-            self.removeFromGroup(item)
-
 #classe base para desenhar setas de guia para solda, acabamento, anotacao, etc.
 # Nao usada para as dimensoes, para elas usar outro metodo (?)
 class Arrow(QtGui.QGraphicsLineItem):

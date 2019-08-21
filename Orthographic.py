@@ -29,32 +29,31 @@ Generate a orthographic view.
 
 from PySide import QtGui, QtCore, QtSvg
 import FreeCAD, FreeCADGui
-from Utils import getGraphicsView
 
+from Utils import getGraphicsView
+from SvgParser import svgParser
 import Drawing
 
-from GraphicItem import ViewGroup, PathItem
-from SvgParser import svgParser
+from math import pi as PI
 
-
-
-#FIXME: CRITICAL! Sometimes this task crashes FreeCAD
 class OrthographicTask:
     """Create and handle orthographic projection task dialog."""
     def __init__(self, graphics_view):
         self.form = FreeCADGui.PySideUic.loadUi(":/ui/task_orthographic.ui")
-        self.orthographic_views = [] #item groups (view frames) TODO: transformar dict
+        self.orthographic_views = {} #item groups (view frames)
         self.parts = [] #parts to be drawn
         # Handle scene objects
         self.graphics_view = graphics_view
         self.scene = self.graphics_view.scene()
         self.scene.keyPressSignal.connect(self.keyPress)
+#        self.front_center = self.scene.sceneRect().center()
         self.connectSlots()
         # Populate PartList
         root_obj = self.graphics_view.getDocument().RootObjects
         self.createTreeWidget(root_obj, self.form.treeWidget)
         # TODO: review this form to configure
-        self.setFrontPlane("")
+        self.setPlane(0)
+        self.setDirection(0)
         self.changeHidden(QtCore.Qt.Unchecked)
         self.changeSmooth(QtCore.Qt.Unchecked)
         
@@ -69,7 +68,7 @@ class OrthographicTask:
         return True
         
     def reject(self):
-        for view in self.orthographic_views:
+        for view in self.orthographic_views.values():
             self.scene.removeItem(view) #TODO: reescreve isso
         self.disconnectSlots()
         return True #close dialog
@@ -96,14 +95,18 @@ class OrthographicTask:
         if event.key() == QtCore.Qt.Key_Escape: #close
             self.reject()
             FreeCADGui.Control.closeDialog()
-            
-    def setFrontPlane(self, text):
-        plane = {"XY": FreeCAD.Vector(0, 0, 1),
-                 "XZ": FreeCAD.Vector(0, 1, 0),
-                 "YZ": FreeCAD.Vector(1, 0, 0)}
-        self.front_direction = plane[self.form.projection_plane.currentText()]
-        if self.form.projection_direction.currentText() == "Negative":
-            self.front_direction *= -1     
+    
+    def setPlane(self, index):
+        """Plane where shape must be projected."""
+        self.plane = self.form.projection_plane.currentText()
+        self.drawOrthographic()
+        
+    def setDirection(self, index):
+        """Direction where eyes look to."""
+        if self.form.projection_direction.currentText() == "Positive Direction":
+            self.front_direction = FreeCAD.Vector(0, 0, -1)
+        elif self.form.projection_direction.currentText() == "Negative Direction":
+            self.front_direction = FreeCAD.Vector(0, 0, 1)
         self.drawOrthographic()
     
     def changeParts(self, item, column):
@@ -127,6 +130,9 @@ class OrthographicTask:
                 return
             if item.checkState(0) == QtCore.Qt.Checked:
                 self.parts.append(label)
+                if len(self.parts) == 1: #if I had 0 selected
+                    self.drawOrthographic(True)
+                    return
             elif item.checkState(0) == QtCore.Qt.Unchecked:
                 if label in self.parts:
                     self.parts.remove(label)
@@ -144,16 +150,16 @@ class OrthographicTask:
     ## METHODS ##
     def connectSlots(self):
         """Connect all slot functions to dialog widgets"""
-        self.form.projection_plane.currentIndexChanged.connect(self.setFrontPlane)
-        self.form.projection_direction.currentIndexChanged.connect(self.setFrontPlane)
+        self.form.projection_plane.currentIndexChanged.connect(self.setPlane)
+        self.form.projection_direction.currentIndexChanged.connect(self.setDirection)
         self.form.treeWidget.itemChanged.connect(self.changeParts)
         self.form.show_hidden.stateChanged.connect(self.changeHidden) 
         self.form.show_smooth.stateChanged.connect(self.changeSmooth)
         
     def disconnectSlots(self):
         """Disconnect all slot functions to dialog widgets"""
-        self.form.projection_plane.currentIndexChanged.disconnect(self.setFrontPlane)
-        self.form.projection_direction.currentIndexChanged.disconnect(self.setFrontPlane)
+        self.form.projection_plane.currentIndexChanged.disconnect(self.setPlane)
+        self.form.projection_direction.currentIndexChanged.disconnect(self.setDirection)
         self.form.treeWidget.itemChanged.disconnect(self.changeParts)
         self.form.show_hidden.stateChanged.disconnect(self.changeHidden) 
         self.form.show_smooth.stateChanged.disconnect(self.changeSmooth)
@@ -175,38 +181,52 @@ class OrthographicTask:
                 item.setCheckState(0, QtCore.Qt.Unchecked)
                 self.createTreeWidget(part.Group, item) #make recursive iter
 
-    def drawOrthographic(self):
+    def drawOrthographic(self, center_scene=False):
         """Create and add a orthographic projection items."""
         document = self.graphics_view.getDocument()
-        for group in self.orthographic_views:
-            self.scene.removeItem(group)
-        self.orthographic_views = []
-        if len(self.parts) == 1:
+        for view in self.orthographic_views.values():
+            self.scene.removeItem(view)
+        if len(self.orthographic_views) > 0 and center_scene == False:
+            pos = self.orthographic_views["Front"].pos()
+        self.orthographic_views = {}
+        if len(self.parts) == 0:
+            return
+        
+        elif len(self.parts) == 1:
             shape = document.getObjectsByLabel(self.parts[0])[0].Shape
+            # # # 
+            #TODO: reposicionar esse trecho de codigo depois dos ifs para evitar repeticao 
             paths, vertices = self.getView(shape)
-            for path in paths:
-                self.scene.addItem(path)
-            group = ViewGroup(paths)
-            self.scene.addItem(group)
-            #TODO: move group para centro da pagina se for a frontal 
-#            group.centralize(self.scene) 
-#            self.vertices = vertices
-            self.orthographic_views.append(group)
+            view = OrthographicItem(paths, vertices)
+            self.scene.addItem(view)
+            view.drawView(self.scene)
+            view.flipVertical()
+            self.orthographic_views["Front"] = view
+            # # #
         elif len(self.parts) > 1:
             shape = document.getObjectsByLabel(self.parts[0])[0].Shape
             for part in self.parts[1:]:
                 next_shape = document.getObjectsByLabel(part)[0].Shape
                 shape = shape.fuse(next_shape) #make a union with shapes
             paths, vertices = self.getView(shape)
-            for path in paths:
-                self.scene.addItem(path)
-            group = ViewGroup(paths)
-            self.scene.addItem(group)
+            view = OrthographicItem(paths, vertices)
+            self.scene.addItem(view)
+            view.drawView(self.scene)
+            view.flipVertical()
+            self.orthographic_views["Front"] = view
+        if center_scene:
+            center = self.scene.sceneRect().center()
+            self.orthographic_views["Front"].centralize(center)
+        else: 
+            self.orthographic_views["Front"].setPos(pos)
+        # TODO: recalcula a posicao de todas as vistas    
         # TODO: pega as direcoes a serem projetadas e gera cada view
       
     def getView(self, shape, direction="Front"):
         """Return lines checked in task dialog.
         direction is view direction (Front, Right, Top...)
+        Projection are made always over xy plane (z direction), shapes are 
+        rotated 90° and then projected. 
         - VISIBLE
         V   hard edge 
         V1  smooth edges 
@@ -221,61 +241,140 @@ class OrthographicTask:
         HO  contours apparents 
         HI  isoparametric
         """
-        paths = []
+        paths = {"visible": [], "hidden": []}
         vertices = []
-        edge_visible = [True,  
-                        self.show_smooth,
-                        False, 
-                        True,  
-                        False] 
+        edge_visible = [True, self.show_smooth, False, True, False] 
         edge_hidden = [self.show_hidden, 
                        True if self.show_hidden and self.show_smooth else False, 
                        False, 
                        True if self.show_hidden else False, 
                        False] 
-        #TODO: checar direcao, checa projection angle
-        #      usar no lugar desse vetor constante
-        shape_list = Drawing.projectEx(shape, FreeCAD.Vector(0, 0, 1))
+        # Change projection plane
+        if self.plane == "XZ":
+            matrix = FreeCAD.Base.Matrix()
+            matrix.rotateX(PI/2)
+            matrix.rotateZ(PI/2)
+            shape = shape.transformGeometry(matrix)
+        elif self.plane == "YZ":
+            matrix = FreeCAD.Base.Matrix()
+            matrix.rotateY(-PI/2)
+            matrix.rotateZ(-PI/2)
+            shape = shape.transformGeometry(matrix)
+        # TODO: VERIFICAR A DIREACO CERTA PARA O REAR 
+        #      dependendo vai ser valor de -180° ou 180°
+        # TODO: Acrescentar first angle
+        # Generate required view
+        rotate = {"Third Angle": {"Front": lambda m: None, 
+                                  "Rear": lambda m: m.rotateY(PI),
+                                  "Left": lambda m: m.rotateY(PI/2),
+                                  "Right": lambda m: m.rotateY(-PI/2),
+                                  "Top": lambda m: m.rotateX(PI/2),
+                                  "Bottom": lambda m: m.rotateX(-PI/2)}}
+        matrix = FreeCAD.Base.Matrix()
+        rotate["Third Angle"][direction](matrix)
+        shape = shape.transformGeometry(matrix) #rotated shape
+        shape_list = Drawing.projectEx(shape, self.front_direction)
         shape_visible = shape_list[:5]
         shape_hidden = shape_list[5:]
-        # NOTE: hidden first because visible should overlap hidden
-        for edge, shape in zip(edge_hidden, shape_hidden):
-            if edge:
-                svg = Drawing.projectToSVG(shape, FreeCAD.Vector(0, 0, 1))
-                path, vertex = svgParser(svg, True) 
-                paths.extend(path)
-                vertices.extend(vertex)
         for edge, shape in zip(edge_visible, shape_visible):
             if edge:
-                svg = Drawing.projectToSVG(shape, FreeCAD.Vector(0, 0, 1))
-                path, vertex = svgParser(svg)
-                paths.extend(path)
+                svg = Drawing.projectToSVG(shape, self.front_direction)
+                path, vertex = svgParser(svg) #lists
+                paths["visible"].extend(path)
+                vertices.extend(vertex)
+        for edge, shape in zip(edge_hidden, shape_hidden):
+            if edge:
+                svg = Drawing.projectToSVG(shape, self.front_direction)
+                path, vertex = svgParser(svg) #lists
+                paths["hidden"].extend(path)
                 vertices.extend(vertex)
         return (paths, vertices)
 
+    def configLines(self, view, hidden=False, thick=0.35):
+        """Configure view hidden, tickness and color line."""
+        pass
     
-class OrthographicItem(QtSvg.QGraphicsSvgItem):
-    def __init__(self, filepath):
-        super(OrthographicItem, self).__init__(filepath)
+    def configViews(self):
+        """Configure all Views"""
+        pass
+
+# TODO: alterar esse nome para OrthographicItemGroup ou algo assim
+class OrthographicItem(QtGui.QGraphicsItemGroup):
+    """Group all paths in a view"""
+    def __init__(self, paths, vertices, **config):
+        super(OrthographicItem, self).__init__(parent=None, scene=None)
+        self.editModeOn = False
+        self.visible_lines = paths["visible"]
+        self.hidden_lines = paths["hidden"]
+        self.addItems(self.visible_lines)
+        self.addItems(self.hidden_lines)
+#        self.configVisible(config)
+#        self.configHidden(config)
         self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
+#        self.setFlag(QtGui.QGraphicsItem.ItemIsSelectable)
         self.setCursor(QtCore.Qt.OpenHandCursor)
     
     def setEditMode(self, value):
         """Edit mode, true when editing (or creating) the image."""
         self.editModeOn = value
+    
+#    def boundingRect(self):
+#        margin=10
+#        rect = super(OrthographicItem, self).boundingRect()
+#        rect.adjust(-self.margin, -self.margin, self.margin, self.margin)
+#        return rect
+    
+    def addItems(self, items):
+        """Add a list of items to group."""
+        for item in items:
+            self.addToGroup(item)
 
-    def paint(self, painter, option, widget=None):
+    def removeItems(self, items):
+        """Remove a list of items from group."""
+        for item in items:
+            self.removeFromGroup(item)
+            
+    def flipVertical(self):
+        """Flip the group verticaly."""
+        pos = self.pos()
+        self.scale(1,-1)
+        self.setPos(pos) #ensure same position
+        
+    def centralize(self, pos):
+        """Center group at pos."""
         rect = self.boundingRect()
-        # Draw rect
-        # FIXME: rect should not be affected by scale nor opacity 
-        if self.editModeOn: 
-            pen = QtGui.QPen()
-            pen.setStyle(QtCore.Qt.DotLine)
-            pen.setColor(QtCore.Qt.gray)
-            pen.setWidthF(2)
-            painter.setPen(pen)
-            painter.drawRect(0, 0, rect.width(), rect.height())
-        super(OrthographicItem, self).paint(painter, option, widget) 
+        rect.moveCenter(pos)
+        self.setPos(rect.topLeft())
+    
+    def drawView(self, scene):
+        """Draw lines in view."""
+        # NOTE: hidden first because visible should overlap hidden
+        for path in self.hidden_lines:
+            path.setHidden()
+            scene.addItem(path)
+        for path in self.visible_lines:
+            scene.addItem(path)
+            
+    # TODO: implementar configuracao de espessura e cor
+    def configVisible(self, config):
+        pass
+    
+    def configHidden(self, config):
+        pass
+    
+    #TODO: implementar esse metodo 
+#    def paint(self, painter, option, widget=None):
+#        rect = self.boundingRect()
+#        # Draw rect
+#        # FIXME: rect should not be affected by scale
+#        if self.editModeOn == False: 
+#            pen = QtGui.QPen()
+#            pen.setStyle(QtCore.Qt.DotLine)
+#            pen.setColor(QtCore.Qt.gray)
+#            pen.setWidthF(2)
+#            painter.setPen(pen)
+#            painter.drawRect(0, 0, rect.width(), rect.height())
+#        super(OrthographicItem, self).paint(painter, option, widget) 
         
 
 class Orthographic:

@@ -23,7 +23,7 @@
       <item row="1" column="0">
        <widget class="QLabel" name="label_7">
         <property name="text">
-         <string>Projection angle</string>
+         <string>Projection</string>
         </property>
        </widget>
       </item>
@@ -37,7 +37,7 @@
       <item row="5" column="0">
        <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>Direction</string>
+         <string>Look to</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -90,12 +90,12 @@
        <widget class="QComboBox" name="projection_direction">
         <item>
          <property name="text">
-          <string notr="true">Positive</string>
+          <string notr="true">Positive Direction</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string notr="true">Negative</string>
+          <string notr="true">Negative Direction</string>
          </property>
         </item>
        </widget>

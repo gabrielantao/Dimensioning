@@ -33,7 +33,6 @@ import FreeCAD, FreeCADGui
 from Utils import getGraphicsView
 
 from SvgParser import svgParser
-from GraphicItem import ViewGroup
 
 class TestCommand:
     """Command for test."""

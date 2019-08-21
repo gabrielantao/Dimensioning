@@ -101,7 +101,7 @@ venv.bak/
 /site
 
 # My tests
-/Test
+Test/
 
 # mypy
 .mypy_cache/

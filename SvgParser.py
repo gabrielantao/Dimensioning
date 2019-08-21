@@ -36,9 +36,8 @@ Note: Unfortunately FreeCAD crashes everytime you try to use xml.dom, so
 from PySide import QtCore
 from GraphicItem import PathItem, VertexItem
 import re
-import FreeCAD
 
-def svgParser(svg, hidden=False):
+def svgParser(svg):
     re_path = re.finditer(r"\sd=\"([\-|\w|\s|\.|\,]*)\"", svg)
     re_circle = re.finditer(r"cx ={0} cy ={0} r ={0}".format(r"\"([\-|\d|\.]*)\""), svg)
     re_ellipse = re.finditer(r"<g transform = \"rotate\({0},{0},{0}\)\">\s*" + \
@@ -110,8 +109,5 @@ def svgParser(svg, hidden=False):
         points = [QtCore.QPointF(c_x, c_y), r_x, r_y, rot, pivot]
         paths.append(PathItem("ellipse", current_point, *points)) 
         vertices.add(VertexItem(current_point, [rot, pivot]))
-    if hidden: #TODO: passar essa responsabilidade para uma funcao do task
-        for path in paths:
-            path.setHidden()
-#    #TODO: setar aqui a espessura (...e a cor?)
+    # TODO: converter vertices para lista?
     return (paths, vertices)
