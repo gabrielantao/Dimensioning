@@ -40,8 +40,8 @@ class OrthographicTask:
     """Create and handle orthographic projection task dialog."""
     def __init__(self, graphics_view):
         self.form = FreeCADGui.PySideUic.loadUi(":/ui/task_orthographic.ui")
-        self.orthographic_views = {} #item groups (view frames)
-        self.parts = [] #parts to be drawn
+        self.orthographic_views = {"Front": None} #ensure at least front
+        self.selected_parts = [] #part labels to be drawn
         # Handle scene objects
         self.graphics_view = graphics_view
         self.scene = self.graphics_view.scene()
@@ -121,29 +121,38 @@ class OrthographicTask:
             msgBox.setInformativeText("Maybe this object was deleted or it was relabeled recently.\n" + \
                                       "You should reopen this task dialog.")
             msgBox.show()
-            if label in self.parts:
-                self.parts.remove(label)
+            if label in self.selected_parts:
+                self.selected_parts.remove(label)
         # NOTE: Save label (string) ensure that I always have the reference.
         #       Labels are forced to be unique in a document.
         else:
             if obj[0].TypeId.split("::")[1] == "DocumentObjectGroup":
                 return
             if item.checkState(0) == QtCore.Qt.Checked:
-                self.parts.append(label)
-                if len(self.parts) == 1: #if I had 0 selected
-                    self.drawOrthographic(True)
+                self.selected_parts.append(label)
+                if len(self.selected_parts) == 1: #if I had 0 selected
+                    self.drawOrthographic(center_scene=True)
                     return
             elif item.checkState(0) == QtCore.Qt.Unchecked:
-                if label in self.parts:
-                    self.parts.remove(label)
+                if label in self.selected_parts:
+                    self.selected_parts.remove(label)
         self.drawOrthographic()
     
+    def changeView(self, state, name):
+        """Add or remove a view."""
+        if "Front" in self.orthographic_views:
+            if state == QtCore.Qt.Checked:
+                self.drawOrthographic(view_name=name)
+            else:
+                self.scene.removeItem(self.orthographic_views.pop(name))
+            
     def changeHidden(self, state):
-        """When some edge visible or hidden line checkebox change state."""
+        """Add or remove hidden lines."""
         self.show_hidden = True if state == QtCore.Qt.Checked else False
         self.drawOrthographic()
         
     def changeSmooth(self, state):
+        """Add or remove smooth lines."""
         self.show_smooth = True if state == QtCore.Qt.Checked else False
         self.drawOrthographic()
         
@@ -153,6 +162,11 @@ class OrthographicTask:
         self.form.projection_plane.currentIndexChanged.connect(self.setPlane)
         self.form.projection_direction.currentIndexChanged.connect(self.setDirection)
         self.form.treeWidget.itemChanged.connect(self.changeParts)
+        self.form.rear_view.stateChanged.connect(lambda state: self.changeView(state, "Rear"))
+        self.form.left_view.stateChanged.connect(lambda state: self.changeView(state, "Left"))
+        self.form.right_view.stateChanged.connect(lambda state: self.changeView(state, "Right"))
+        self.form.top_view.stateChanged.connect(lambda state: self.changeView(state, "Top"))
+        self.form.bottom_view.stateChanged.connect(lambda state: self.changeView(state, "Bottom"))
         self.form.show_hidden.stateChanged.connect(self.changeHidden) 
         self.form.show_smooth.stateChanged.connect(self.changeSmooth)
         
@@ -161,6 +175,11 @@ class OrthographicTask:
         self.form.projection_plane.currentIndexChanged.disconnect(self.setPlane)
         self.form.projection_direction.currentIndexChanged.disconnect(self.setDirection)
         self.form.treeWidget.itemChanged.disconnect(self.changeParts)
+        self.form.rear_view.stateChanged.disconnect(lambda state: self.changeView(state, "Rear"))
+        self.form.left_view.stateChanged.disconnect(lambda state: self.changeView(state, "Left"))
+        self.form.right_view.stateChanged.disconnect(lambda state: self.changeView(state, "Right"))
+        self.form.top_view.stateChanged.disconnect(lambda state: self.changeView(state, "Top"))
+        self.form.bottom_view.stateChanged.disconnect(lambda state: self.changeView(state, "Bottom"))
         self.form.show_hidden.stateChanged.disconnect(self.changeHidden) 
         self.form.show_smooth.stateChanged.disconnect(self.changeSmooth)
         
@@ -181,46 +200,49 @@ class OrthographicTask:
                 item.setCheckState(0, QtCore.Qt.Unchecked)
                 self.createTreeWidget(part.Group, item) #make recursive iter
 
-    def drawOrthographic(self, center_scene=False):
+    def drawOrthographic(self, center_scene=False, view_name=""):
         """Create and add a orthographic projection items."""
         document = self.graphics_view.getDocument()
-        for view in self.orthographic_views.values():
-            self.scene.removeItem(view)
-        if len(self.orthographic_views) > 0 and center_scene == False:
-            pos = self.orthographic_views["Front"].pos()
-        self.orthographic_views = {}
-        if len(self.parts) == 0:
+        # Get shape
+        if len(self.selected_parts) == 0:
+            for view in self.orthographic_views.values():
+                self.scene.removeItem(view)
             return
-        
-        elif len(self.parts) == 1:
-            shape = document.getObjectsByLabel(self.parts[0])[0].Shape
-            # # # 
-            #TODO: reposicionar esse trecho de codigo depois dos ifs para evitar repeticao 
-            paths, vertices = self.getView(shape)
-            view = OrthographicItem(paths, vertices)
-            self.scene.addItem(view)
-            view.drawView(self.scene)
-            view.flipVertical()
-            self.orthographic_views["Front"] = view
-            # # #
-        elif len(self.parts) > 1:
-            shape = document.getObjectsByLabel(self.parts[0])[0].Shape
-            for part in self.parts[1:]:
+        elif len(self.selected_parts) == 1:
+            shape = document.getObjectsByLabel(self.selected_parts[0])[0].Shape
+        elif len(self.selected_parts) > 1:
+            shape = document.getObjectsByLabel(self.selected_parts[0])[0].Shape
+            for part in self.selected_parts[1:]:
                 next_shape = document.getObjectsByLabel(part)[0].Shape
                 shape = shape.fuse(next_shape) #make a union with shapes
-            paths, vertices = self.getView(shape)
-            view = OrthographicItem(paths, vertices)
+        # Create views
+        if self.orthographic_views["Front"]:
+            pos = self.orthographic_views["Front"].pos()
+        if view_name == "": #redraw all current views in this case
+            for view in self.orthographic_views.values():
+                self.scene.removeItem(view)
+            for name in self.orthographic_views.keys():
+                paths, vertices = self.getView(shape, name)
+                view = OrthographicItemGroup(paths, vertices)
+                self.scene.addItem(view)
+                view.drawView(self.scene)
+                view.verticalFlip()
+                self.orthographic_views[name] = view
+        else: #draw only view_name
+            paths, vertices = self.getView(shape, view_name)
+            view = OrthographicItemGroup(paths, vertices)
             self.scene.addItem(view)
             view.drawView(self.scene)
-            view.flipVertical()
-            self.orthographic_views["Front"] = view
+            view.verticalFlip()
+            self.orthographic_views[view_name] = view
+        # Replace all views
         if center_scene:
             center = self.scene.sceneRect().center()
             self.orthographic_views["Front"].centralize(center)
         else: 
+#            pos = self.orthographic_views["Front"].pos()
             self.orthographic_views["Front"].setPos(pos)
-        # TODO: recalcula a posicao de todas as vistas    
-        # TODO: pega as direcoes a serem projetadas e gera cada view
+        self.replaceViews()
       
     def getView(self, shape, direction="Front"):
         """Return lines checked in task dialog.
@@ -264,14 +286,14 @@ class OrthographicTask:
         #      dependendo vai ser valor de -180° ou 180°
         # TODO: Acrescentar first angle
         # Generate required view
-        rotate = {"Third Angle": {"Front": lambda m: None, 
-                                  "Rear": lambda m: m.rotateY(PI),
-                                  "Left": lambda m: m.rotateY(PI/2),
-                                  "Right": lambda m: m.rotateY(-PI/2),
-                                  "Top": lambda m: m.rotateX(PI/2),
-                                  "Bottom": lambda m: m.rotateX(-PI/2)}}
+        rotate = {"Front": lambda m: None, 
+                  "Rear": lambda m: m.rotateY(PI),
+                  "Left": lambda m: m.rotateY(PI/2), 
+                  "Right": lambda m: m.rotateY(-PI/2),
+                  "Top": lambda m: m.rotateX(PI/2),
+                  "Bottom": lambda m: m.rotateX(-PI/2)}
         matrix = FreeCAD.Base.Matrix()
-        rotate["Third Angle"][direction](matrix)
+        rotate[direction](matrix)
         shape = shape.transformGeometry(matrix) #rotated shape
         shape_list = Drawing.projectEx(shape, self.front_direction)
         shape_visible = shape_list[:5]
@@ -290,6 +312,34 @@ class OrthographicTask:
                 vertices.extend(vertex)
         return (paths, vertices)
 
+    def replaceViews(self):
+        """Replace views based on front view position."""
+        # TODO: denpendendo do projection angle reposiciona as vistas na ordem certa
+        proj_angle = self.form.projection_angle.currentText()
+        rect = self.orthographic_views["Front"].boundingRect()
+        top_left = self.orthographic_views["Front"].mapToScene(rect.topLeft())
+#        left = self.orthographic_views["Front"].mapToScene(rect.left())
+        if proj_angle == "First Angle":
+            pass#TODO: implementar
+        elif proj_angle == "Third Angle":
+            if "Rear" in self.orthographic_views:
+                pass #TODO: implementar
+            if "Left" in self.orthographic_views:
+                l_rect = self.orthographic_views["Left"].boundingRect()
+                x = top_left.x() - l_rect.width() - 20 
+                self.orthographic_views["Left"].setPos(x, top_left.y())
+            if "Right" in self.orthographic_views: 
+                r_rect = self.orthographic_views["Right"].boundingRect()
+                x = top_left.x() + rect.width() + r_rect.width() + 20 
+                self.orthographic_views["Right"].setPos(x, top_left.y())
+            if "Top" in self.orthographic_views: 
+                t_rect = self.orthographic_views["Top"].boundingRect()
+                y = top_left.y() - rect.height() - t_rect.height() - 20 
+                self.orthographic_views["Top"].setPos(top_left.x(), y)
+            if "Bottom" in self.orthographic_views:
+                y = top_left.y() + rect.height() + 20 
+                self.orthographic_views["Bottom"].setPos(top_left.x(), y)
+                
     def configLines(self, view, hidden=False, thick=0.35):
         """Configure view hidden, tickness and color line."""
         pass
@@ -298,11 +348,10 @@ class OrthographicTask:
         """Configure all Views"""
         pass
 
-# TODO: alterar esse nome para OrthographicItemGroup ou algo assim
-class OrthographicItem(QtGui.QGraphicsItemGroup):
+class OrthographicItemGroup(QtGui.QGraphicsItemGroup):
     """Group all paths in a view"""
     def __init__(self, paths, vertices, **config):
-        super(OrthographicItem, self).__init__(parent=None, scene=None)
+        super(OrthographicItemGroup, self).__init__(parent=None, scene=None)
         self.editModeOn = False
         self.visible_lines = paths["visible"]
         self.hidden_lines = paths["hidden"]
@@ -320,7 +369,7 @@ class OrthographicItem(QtGui.QGraphicsItemGroup):
     
 #    def boundingRect(self):
 #        margin=10
-#        rect = super(OrthographicItem, self).boundingRect()
+#        rect = super(OrthographicItemGroup, self).boundingRect()
 #        rect.adjust(-self.margin, -self.margin, self.margin, self.margin)
 #        return rect
     
@@ -334,7 +383,7 @@ class OrthographicItem(QtGui.QGraphicsItemGroup):
         for item in items:
             self.removeFromGroup(item)
             
-    def flipVertical(self):
+    def verticalFlip(self):
         """Flip the group verticaly."""
         pos = self.pos()
         self.scale(1,-1)
@@ -374,7 +423,7 @@ class OrthographicItem(QtGui.QGraphicsItemGroup):
 #            pen.setWidthF(2)
 #            painter.setPen(pen)
 #            painter.drawRect(0, 0, rect.width(), rect.height())
-#        super(OrthographicItem, self).paint(painter, option, widget) 
+#        super(OrthographicItemGroup, self).paint(painter, option, widget) 
         
 
 class Orthographic:
